@@ -12,16 +12,17 @@ RUN apt-get install -y \
     make \
     cmake
 
-COPY . /code/wukong
+RUN mkdir /code && cd /code && \
+    git clone https://github.com/Kingdo777/wukong.git
 
-RUN  rm -rf /code/wukong/build &&  \
-     mkdir /code/wukong/build &&   \
-     mkdir /wukong
+RUN rm -rf /code/wukong/build &&  \
+    mkdir /code/wukong/build &&   \
+    mkdir /wukong
 
 WORKDIR /code/wukong/build
 
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/wukong .. &&  \
-    make -j12
+    make
 
 RUN cp -r /code/wukong/build/out/* /wukong/
 
