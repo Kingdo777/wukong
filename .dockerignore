@@ -1,0 +1,8 @@
+.git/*
+
+.idea/*
+cmake-build-debug/*
+
+build/*
+install/*
+out/*

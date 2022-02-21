@@ -1,3 +1,10 @@
+/.git/
+
 /.idea/
 /cmake-build-debug/
-/*build*/
+
+/build/
+/install/
+/out/
+
+docker/wukong-base.dockerfile

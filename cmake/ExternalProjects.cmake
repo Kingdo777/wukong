@@ -26,7 +26,7 @@ add_library(common_dependencies INTERFACE)
 # 详见https://blog.csdn.net/weixin_43862847/article/details/119762230
 target_link_libraries(common_dependencies INTERFACE
         spdlog
-        pistache_static
+        pistache_shared
 )
 # 起一个别名, 因为当前CMAKE不支持直接生成wukong::格式的lib
 add_library(wukong::common_dependencies ALIAS common_dependencies)
