@@ -6,3 +6,4 @@ cmake-build-debug/*
 build/*
 install/*
 out/*
+deps/*

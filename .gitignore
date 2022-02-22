@@ -8,3 +8,5 @@
 /out/
 
 docker/wukong-base.dockerfile
+
+/deps/
