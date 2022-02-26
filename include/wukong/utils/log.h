@@ -20,7 +20,7 @@
         "Logging set to trace but minimum log level set too high ({})", \
         SPDLOG_ACTIVE_LEVEL);
 
-namespace wukong::util {
+namespace wukong::utils {
     void initLog();
 }
 

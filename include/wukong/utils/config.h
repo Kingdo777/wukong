@@ -5,65 +5,53 @@
 #ifndef WUKONG_CONFIG_H
 #define WUKONG_CONFIG_H
 
+#include <wukong/utils/env.h>
 #include <string>
+#include <chrono>
 
-#define MPI_HOST_STATE_LEN 20
+#define DEFAULT_ENDPOINT_PORT       8080
+#define DEFAULT_HEADER_TIMEOUT      300
+#define DEFAULT_BODY_TIMEOUT        300
+#define DEFAULT_REQUEST_TIMEOUT     300
 
-#define DEFAULT_TIMEOUT 60000
-#define RESULT_KEY_EXPIRY 30000
-#define STATUS_KEY_EXPIRY 300000
 
-namespace wukong::util {
+namespace wukong::utils {
     class Config {
-
     public:
-        // System
-        std::string serialisation;
-        std::string logLevel;
-        std::string logFile;
-        std::string stateMode;
-        std::string deltaSnapshotEncoding;
+        static std::string LogLevel() { return logLevel; };
 
-        // Redis
-        std::string redisStateHost;
-        std::string redisQueueHost;
-        std::string redisPort;
+        static int EndpointPort() { return endpointPort; };
 
-        // Scheduling
-        int noScheduler;
-        int overrideCpuCount;
-        std::string noTopologyHints;
+        static int EndpointNumThreads() { return endpointNumThreads; };
 
-        // Worker-related timeouts
-        int globalMessageTimeout;
-        int boundTimeout;
+        static auto EndpointHeaderTimeout() { return endpointHeaderTimeout; };
 
-        // MPI
-        int defaultMpiWorldSize;
-        int mpiBasePort;
+        static auto EndpointBodyTimeout() { return endpointBodyTimeout; };
 
-        // Endpoint
-        std::string endpointInterface;
-        std::string endpointHost;
-        int endpointPort;
-        int endpointNumThreads;
+        static auto EndpointRequestTimeout() { return endpointRequestTimeout; };
 
-        // Transport
-        int functionServerThreads;
-        int stateServerThreads;
-        int snapshotServerThreads;
-        int pointToPointServerThreads;
+        static void print();
 
-        // Dirty tracking
-        std::string dirtyTrackingMode;
-        std::string diffingMode;
+    private:
+        /// Log
+        const static std::string logLevel;
 
-        Config();
+        /// Endpoint
+        // gateway的默认端口，默认为8080
+        const static int endpointPort;
+        // gateway的工作线程数，默认为4
+        const static int endpointNumThreads;
+        // 每个HTTP请求发送header的时间，默认5min
+        const static uint64_t headerTimeout;
+        const static std::chrono::seconds endpointHeaderTimeout;
+        // 每个HTTP请求发送body的时间,和HeaderTimeout共同计时请求的发送过程,如果超过这个时间没有HTTP请求,将断开TCP连接
+        const static uint64_t bodyTimeout;
+        const static std::chrono::seconds endpointBodyTimeout;
+        // 每个请求的响应处理时间,注意,在处理请求的过程中以上两个timeout是无效的,请求处理完毕后会重置连接,以上两个timeout生效,因此此设置不能低于上两者
+        const static uint64_t requestTimeout;
+        const static std::chrono::seconds endpointRequestTimeout;
 
-        void print();
     };
 }
-
-extern wukong::util::Config conf;
 
 #endif //WUKONG_CONFIG_H

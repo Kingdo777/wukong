@@ -14,20 +14,20 @@
 namespace wukong::endpoint {
     class Endpoint {
     public:
-        Endpoint(int port, int threadCount, const std::string &name,
-                 const std::shared_ptr<Pistache::Http::Handler> &handler_ = nullptr);
+        explicit Endpoint(const std::string &name,
+                          const std::shared_ptr<Pistache::Http::Handler> &handler_ = nullptr);
 
         void start();
 
         void stop();
 
-        void set_handler(const std::shared_ptr<Pistache::Http::Handler> &handler_) {
-            endpointHandler = handler_;
-        }
-
     private:
-        int endpointPort;
-        int endpointThreadCount;
+        int endpointPort = utils::Config::EndpointPort();
+        int endpointThreadCount = utils::Config::EndpointNumThreads();
+
+        std::chrono::seconds endpointHeaderTimeout = utils::Config::EndpointHeaderTimeout();
+        std::chrono::seconds endpointBodyTimeout = utils::Config::EndpointBodyTimeout();
+
         std::string endpointName;
         Pistache::Http::Endpoint endpoint;
         std::shared_ptr<Pistache::Http::Handler> endpointHandler = std::make_shared<DefaultHandler>();

@@ -5,14 +5,14 @@
 #include <wukong/utils/config.h>
 
 
-void wukong::util::initLog() {
+void wukong::utils::initLog() {
     // Docs: https://github.com/gabime/spdlog/wiki/3.-Custom-formatting
     spdlog::set_pattern("%^[%H:%M:%S] [%t] [%L]%$ %v");
 
-    if (conf.logLevel == "trace") {
+    if (Config::LogLevel() == "trace") {
         CHECK_MIN_LEVEL(spdlog::level::trace)
         spdlog::set_level(spdlog::level::trace);
-    } else if (conf.logLevel == "debug") {
+    } else if (Config::LogLevel() == "debug") {
         CHECK_MIN_LEVEL(spdlog::level::debug)
         spdlog::set_level(spdlog::level::debug);
     } else {

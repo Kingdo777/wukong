@@ -3,7 +3,7 @@
 //
 #include <wukong/utils/env.h>
 
-namespace wukong::util {
+namespace wukong::utils {
     std::string getEnvVar(std::string const &key, std::string const &deflt) {
         char const *val = getenv(key.c_str());
 
@@ -20,7 +20,11 @@ namespace wukong::util {
         }
     }
 
-    int getIntEnvVar(const std::string &key, const std::string &deflt) {
-        return std::stoi(getEnvVar(key, deflt));
+    int getIntEnvVar(const std::string &key, int deflt) {
+        std::string result = getEnvVar(key, "QWERTYU");
+        if ("QWERTYU" == result)
+            return deflt;
+        else
+            return std::stoi(result);
     }
 }

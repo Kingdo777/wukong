@@ -12,6 +12,8 @@ set(CMAKE_CXX_FLAGS "-Wall")    # 显示所有警告信息(https://blog.csdn.net
 set(CMAKE_CXX_FLAGS_DEBUG "-g") # 使可执行文件便于调试(https://blog.csdn.net/andrewgithub/article/details/108962057)
 set(CMAKE_CXX_STANDARD 17)
 
+option(ENABLE_TRACE "Statistics execution time" ON)
+
 # 设置自定义的include目录
 set(WUKONG_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
@@ -23,6 +25,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out/bin)
 # 引入第三方的module
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(ExternalProjects)
+
+if(${ENABLE_TRACE})
+    add_definitions(-DENABLE_TRACE)
+endif()
+
 
 function(wukong_lib lib_name)
     # 获取源文件

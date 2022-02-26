@@ -11,7 +11,7 @@ add_library(common_dependencies INTERFACE)
 #----------------------- RapidJSON ------------------------------------
 find_package(RapidJSON QUIET)
 if (NOT RapidJSON_FOUND)
-    message("RapidJSON not found. Consider installing it on your system. Downloading it from source...")
+    message("RapidJSON not found. Downloading it from source...")
     FetchContent_Declare(
             RapidJSON
             GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
@@ -30,7 +30,7 @@ endif ()
 #----------------------- SpdLog ------------------------------------
 find_package(spdlog QUIET)
 if (NOT spdlog_FOUND)
-    message("SpdLog not found. Consider installing it on your system. Downloading it from source...")
+    message("SpdLog not found. Downloading it from source...")
     FetchContent_Declare(
             spdlog
             GIT_REPOSITORY https://github.com/gabime/spdlog.git
@@ -57,6 +57,8 @@ target_link_libraries(common_dependencies INTERFACE spdlog)
 
 #----------------------- pistache ------------------------------------
 find_package(PkgConfig REQUIRED)
+set(ENV{PKG_CONFIG_PATH}
+        /usr/local/lib64/pkgconfig:$ENV{PKG_CONFIG_PATH})
 pkg_check_modules(Pistache QUIET IMPORTED_TARGET libpistache)
 if (NOT Pistache_FOUND)
     message("pistache not found.  Downloading it from source...")
@@ -75,6 +77,28 @@ if (NOT Pistache_FOUND)
 else ()
     target_link_libraries(common_dependencies INTERFACE PkgConfig::Pistache)
 endif ()
+
+#----------------------- hiredis ------------------------------------
+find_package(hiredis QUIET)
+if (NOT hiredis_FOUND)
+    message("hiredis not found.  Downloading it from source...")
+    FetchContent_Declare(
+            hiredis
+            GIT_REPOSITORY https://github.com/redis/hiredis.git
+            GIT_TAG v1.0.2
+            GIT_SHALLOW true
+    )
+    set(ENABLE_SSL OFF CACHE BOOL "")
+    set(DISABLE_TESTS ON CACHE BOOL "")
+    set(ENABLE_SSL_TESTS OFF CACHE BOOL "")
+
+    FetchContent_MakeAvailable(hiredis)
+else ()
+    # 这里是因为，通过make install之后，头文件将会被安装到 PREFIX/hiredis/hiredis.h
+    # 但是通过FetchContent获取时，头文件是没有前缀hiredis的，因此为了保证一致，在find_package成功时，添加以下头文件引入目录
+    target_include_directories(common_dependencies INTERFACE ${hiredis_INCLUDE_DIRS}/hiredis)
+endif ()
+target_link_libraries(common_dependencies INTERFACE hiredis)
 
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE

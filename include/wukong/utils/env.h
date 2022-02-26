@@ -7,9 +7,9 @@
 
 #include <string>
 
-namespace wukong::util {
+namespace wukong::utils {
     std::string getEnvVar(const std::string &key, const std::string &deflt);
 
-    int getIntEnvVar(const std::string &key, const std::string &deflt);
+    int getIntEnvVar(const std::string &key, int deflt);
 }
 #endif //WUKONG_ENV_H

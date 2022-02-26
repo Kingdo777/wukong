@@ -7,11 +7,8 @@
 #include <csignal>
 
 namespace wukong::endpoint {
-    wukong::endpoint::Endpoint::Endpoint(int port, int threadCount, const std::string &name,
-                                         const std::shared_ptr<Pistache::Http::Handler> &handler) :
-            endpointPort(port),
-            endpointThreadCount(threadCount),
-            endpoint(Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(port))) {
+    Endpoint::Endpoint(const std::string &name, const std::shared_ptr<Pistache::Http::Handler> &handler) :
+            endpoint(Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(endpointPort))) {
         if (handler != nullptr)
             endpointHandler = handler;
     }
@@ -36,6 +33,8 @@ namespace wukong::endpoint {
         // Configure endpoint
         auto opts = Pistache::Http::Endpoint::options()
                 .threads(endpointThreadCount)
+                .bodyTimeout(endpointBodyTimeout)
+                .headerTimeout(endpointHeaderTimeout)
                 .backlog(256)
                 .flags(Pistache::Tcp::Options::ReuseAddr);
 
