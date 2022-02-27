@@ -7,11 +7,25 @@
 
 #include <wukong/utils/config.h>
 #include <wukong/utils/log.h>
-#include <wukong/endpoint//handler.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
 
 namespace wukong::endpoint {
+
+    class DefaultHandler : public Pistache::Http::Handler {
+
+    HTTP_PROTOTYPE(DefaultHandler)
+
+        void onRequest(
+                const Pistache::Http::Request &req,
+                Pistache::Http::ResponseWriter response) override;
+
+        void onTimeout(
+                const Pistache::Http::Request & /*req*/,
+                Pistache::Http::ResponseWriter response) override;
+    };
+
+
     class Endpoint {
     public:
         explicit Endpoint(const std::string &name,

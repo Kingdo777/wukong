@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package wukong.proto;
+
+message Message {
+  enum MessageType {
+    FUNCTION = 0;
+  }
+  int32 id = 1;
+  MessageType type = 2;
+
+  string application = 3;
+  string function = 4;
+
+  bool isAsync = 5;
+
+  bytes inputData = 6;
+  bytes outputData = 7;
+  string resultKey = 8;
+
+  int64 timestamp = 9;
+  int64 finishTimestamp = 10;
+
+}

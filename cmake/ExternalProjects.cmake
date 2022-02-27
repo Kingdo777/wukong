@@ -2,7 +2,7 @@ include(FindGit)
 find_package(Git REQUIRED)
 include(FetchContent)
 find_package(Threads REQUIRED)
-
+find_package(Protobuf REQUIRED)
 
 #------------- 将所有的第三方包, 全部打包成一个依赖库 ------------------------
 # 创建一个INTERFACE库，一个INTERFACE库不会直接创建编译目标文件, 与下面的INTERFACE并不是同一概念
@@ -103,6 +103,7 @@ target_link_libraries(common_dependencies INTERFACE hiredis)
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE
         pthread
+        ${Protobuf_LIBRARIES}
         )
 
 #--------------------------------------------------------------------
