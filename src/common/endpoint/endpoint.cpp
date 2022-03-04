@@ -54,7 +54,7 @@ namespace wukong::endpoint {
             SPDLOG_INFO("Sigwait return value: {}", signal);
         }
 
-        endpoint.shutdown();
+        stop();
     }
 
     void Endpoint::stop() {

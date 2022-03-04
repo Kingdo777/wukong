@@ -31,9 +31,9 @@ namespace wukong::endpoint {
         explicit Endpoint(const std::string &name,
                           const std::shared_ptr<Pistache::Http::Handler> &handler_ = nullptr);
 
-        void start();
+        virtual void start();
 
-        void stop();
+        virtual void stop();
 
     private:
         int endpointPort = utils::Config::EndpointPort();
