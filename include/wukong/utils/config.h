@@ -14,6 +14,8 @@
 #define DEFAULT_BODY_TIMEOUT        300
 #define DEFAULT_REQUEST_TIMEOUT     300
 
+#define DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST    8
+
 
 namespace wukong::utils {
     class Config {
@@ -29,6 +31,10 @@ namespace wukong::utils {
         static auto EndpointBodyTimeout() { return endpointBodyTimeout; };
 
         static auto EndpointRequestTimeout() { return endpointRequestTimeout; };
+
+        static int ClientNumThreads() { return clientNumThreads; };
+
+        static int ClientMaxConnectionsPerHost() { return clientMaxConnectionsPerHost; };
 
         static void print();
 
@@ -50,6 +56,11 @@ namespace wukong::utils {
         // 每个请求的响应处理时间,注意,在处理请求的过程中以上两个timeout是无效的,请求处理完毕后会重置连接,以上两个timeout生效,因此此设置不能低于上两者
         const static uint64_t requestTimeout;
         const static std::chrono::seconds endpointRequestTimeout;
+
+        /// Client-Server
+        const static int clientNumThreads;
+        const static int clientMaxConnectionsPerHost;
+
 
     };
 }

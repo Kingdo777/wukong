@@ -5,6 +5,7 @@
 #include <wukong/utils/timing.h>
 #include <wukong/proto/proto.h>
 #include <wukong/utils/json.h>
+#include <wukong/utils/uuid.h>
 
 namespace wukong::proto {
 
@@ -46,7 +47,6 @@ namespace wukong::proto {
     }
 
 
-
     wukong::proto::Message jsonToMessage(const std::string &jsonIn) {
         TIMING_START(jsonDecode)
 
@@ -56,8 +56,9 @@ namespace wukong::proto {
 
         wukong::proto::Message msg;
 
-        msg.set_id(utils::getIntFromJson(d, "id", 0));
-        int msgType = utils::getIntFromJson(d, "type", wukong::proto::Message::MessageType::Message_MessageType_FUNCTION);
+        msg.set_id(utils::uuid());
+        int msgType = utils::getIntFromJson(d, "type",
+                                            wukong::proto::Message::MessageType::Message_MessageType_FUNCTION);
         if (!wukong::proto::Message::MessageType_IsValid(msgType)) {
             SPDLOG_ERROR("Bad message type: {}", msgType);
             throw std::runtime_error("Invalid message type");

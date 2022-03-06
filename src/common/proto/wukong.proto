@@ -4,9 +4,9 @@ package wukong.proto;
 
 message Message {
   enum MessageType {
-    FUNCTION = 0;
+    FUNCTION = 0;   //调用函数
   }
-  int32 id = 1;
+  uint32 id = 1;
   MessageType type = 2;
 
   string application = 3;

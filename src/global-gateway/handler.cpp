@@ -4,6 +4,9 @@
 
 #include <wukong/utils/timing.h>
 #include <wukong/proto/proto.h>
+#include <wukong/utils/uuid.h>
+
+#include <utility>
 #include "endpoint.h"
 
 void GlobalGatewayHandler::onRequest(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
@@ -52,12 +55,22 @@ void GlobalGatewayHandler::onTimeout(const Pistache::Http::Request &, Pistache::
 
 void
 GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
-    Pistache::Http::Code code = Pistache::Http::Code::Ok;
-    std::string result = "OK\n";
 
-    endpoint()->lb->dispatch();
 
-    response.send(code, result);
+    wukong::proto::Message msg;
+    msg.set_id(wukong::utils::uuid());
+    msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
+
+    msg.set_application("test");
+    msg.set_function("hello");
+
+    msg.set_isasync(true);
+
+    msg.set_inputdata("");
+
+    msg.set_timestamp(time(nullptr));
+
+    endpoint()->lb->dispatch(std::move(msg), std::move(response));
 }
 
 void
@@ -66,8 +79,6 @@ GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request &request, Pist
 
     Pistache::Http::Code code = Pistache::Http::Code::Ok;
     std::string result;
-
-    endpoint()->lb->dispatch();
 
     if (requestStr.empty()) {
         SPDLOG_ERROR("Wukong handler received empty request");

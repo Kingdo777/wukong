@@ -6,7 +6,7 @@
 #define WUKONG_GLOBAL_GW_ENDPOINT_H
 
 #include <wukong/endpoint/endpoint.h>
-#include "LoadBalance.h"
+#include "load-balance.h"
 
 class GlobalGatewayEndpoint;
 
@@ -41,10 +41,10 @@ public:
     typedef wukong::endpoint::Endpoint BASE;
 
     explicit GlobalGatewayEndpoint(const std::string &name = "global-gateway-endpoint",
-                                   const std::shared_ptr<LoadBalance> &lb = std::make_shared<LoadBalance>(),
+                                   std::shared_ptr<LoadBalance> lb = std::make_shared<LoadBalance>(),
                                    const std::shared_ptr<GlobalGatewayHandler> &handler = std::make_shared<GlobalGatewayHandler>());
 
-    const std::shared_ptr<LoadBalance> &lb;
+    std::shared_ptr<LoadBalance> lb;
 
     void start() override;
 

@@ -4,12 +4,14 @@
 
 #include "endpoint.h"
 
+#include <utility>
+
 GlobalGatewayEndpoint::GlobalGatewayEndpoint(
         const std::string &name,
-        const std::shared_ptr<LoadBalance> &lb_,
+        std::shared_ptr<LoadBalance> lb_,
         const std::shared_ptr<GlobalGatewayHandler> &handler) :
         Endpoint(name, handler),
-        lb(lb_) {
+        lb(std::move(lb_)) {
     handler->associateEndpoint(this);
 }
 

@@ -30,6 +30,13 @@ namespace wukong::utils {
             DEFAULT_REQUEST_TIMEOUT);
     const std::chrono::seconds Config::endpointRequestTimeout = std::chrono::seconds(requestTimeout);   /* NOLINT */
 
+    const int Config::clientNumThreads = getIntEnvVar( /* NOLINT */
+            "CLIENT_NUM_THREADS",
+            hardware_concurrency());
+    const int Config::clientMaxConnectionsPerHost = getIntEnvVar( /* NOLINT */
+            "CLIENT_MAX_CONNECTS_PER_HOST",
+            DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST);
+
     void Config::print() {
         SPDLOG_INFO("--- Log ---");
         SPDLOG_INFO("logLevel                       {}", logLevel);
@@ -40,5 +47,9 @@ namespace wukong::utils {
         SPDLOG_INFO("endpointHeaderTimeout          {}s", headerTimeout);
         SPDLOG_INFO("endpointBodyTimeout            {}s", bodyTimeout);
         SPDLOG_INFO("endpointRequestTimeout         {}s", requestTimeout);
+
+        SPDLOG_INFO("--- Client ---");
+        SPDLOG_INFO("clientNumThreads               {}", clientNumThreads);
+        SPDLOG_INFO("clientMaxConnectionsPerHost    {}", clientMaxConnectionsPerHost);
     }
 }
