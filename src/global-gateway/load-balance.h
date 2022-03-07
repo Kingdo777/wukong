@@ -9,6 +9,8 @@
 #include "wukong/client/client-server.h"
 #include <wukong/proto/proto.h>
 
+#include <map>
+
 class LoadBalanceClientHandler : public wukong::client::ClientHandler {
 PROTOTYPE_OF(Pistache::Aio::Handler, LoadBalanceClientHandler);
 
@@ -36,11 +38,13 @@ private:
 
     void handleFunctionCallQueue();
 
-    void asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &entry);
+    void asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &&entry);
 
 private:
     Pistache::PollableQueue<FunctionCallEntry> functionCallQueue;
+    std::map<std::string, FunctionCallEntry> functionCallMap;
 
+    void responseFunctionCall(Pistache::Http::Code code, std::string &result, const std::string &funcEntryIndex);
 };
 
 class LoadBalance {

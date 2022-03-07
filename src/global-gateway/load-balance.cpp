@@ -3,6 +3,7 @@
 //
 
 #include <wukong/utils/log.h>
+#include <wukong/utils/radom.h>
 
 #include <utility>
 #include "load-balance.h"
@@ -27,27 +28,28 @@ void LoadBalanceClientHandler::handleFunctionCallQueue() {
         auto function = functionCallQueue.popSafe();
         if (!function)
             break;
-        asyncCallFunction(*function);
+        asyncCallFunction(std::move(*function));
     }
 }
 
-void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &entry) {
+void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &&entry) {
     auto res = post("127.0.0.1:9080", "");
+    std::string funcEntryIndex = wukong::utils::randomString(15);
+    functionCallMap.insert(std::make_pair(funcEntryIndex, std::move(entry)));
     res.then(
-            [&](Pistache::Http::Response response) {
+            [=](Pistache::Http::Response response) {
                 auto code = response.code();
-                const std::string &result = response.body();
-                entry.response.send(code, result);
-
+                std::string result = response.body();
+                responseFunctionCall(code, result, funcEntryIndex);
             },
-            [&](std::exception_ptr exc) {
+            [=](std::exception_ptr exc) {
                 try {
                     std::rethrow_exception(std::move(exc));
                 }
                 catch (const std::exception &e) {
                     auto code = Pistache::Http::Code::Internal_Server_Error;
-                    const std::string &result = e.what();
-                    entry.response.send(code, result);
+                    std::string result = e.what();
+                    responseFunctionCall(code, result, funcEntryIndex);
                 }
             });
 }
@@ -55,6 +57,17 @@ void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::Funct
 void LoadBalanceClientHandler::callFunction(Pistache::Http::ResponseWriter response) {
     FunctionCallEntry functionCallEntry(std::move(response));
     functionCallQueue.push(std::move(functionCallEntry));
+}
+
+void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, std::string &result,
+                                                    const std::string &funcEntryIndex) {
+    auto iter = functionCallMap.find(funcEntryIndex);
+    if (iter == functionCallMap.end()) {
+        code = Pistache::Http::Code::Internal_Server_Error;
+        result = "functionCall not Find in functionCallMap\n";
+    }
+    iter->second.response.send(code, result);
+    functionCallMap.erase(iter);
 }
 
 void LoadBalance::start() {
