@@ -25,6 +25,8 @@
 namespace wukong::utils {
     typedef std::chrono::steady_clock::time_point TimePoint;
 
+    uint64_t getMillsTimestamp();
+
     class Timing {
     public:
         Timing() = default;
@@ -33,6 +35,7 @@ namespace wukong::utils {
 
         static void logEndTimer(const std::string &label,
                                 const wukong::utils::TimePoint &begin);
+
         static void printTimerTotals();
 
 

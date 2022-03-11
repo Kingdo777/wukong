@@ -14,6 +14,20 @@ namespace wukong::proto {
 
     wukong::proto::Message jsonToMessage(const std::string &jsonIn);
 
+
+//    std::string messageToJson(const ReplyRegisterInvoker &msg);
+//
+//    wukong::proto::ReplyRegisterInvoker jsonToReplyRegisterInvoker(const std::string &jsonIn);
+
+
+    std::string messageToJson(const Invoker &msg);
+
+    wukong::proto::Invoker jsonToInvoker(const std::string &jsonIn);
+
+    wukong::proto::Invoker hashToInvoker(const std::unordered_map<std::string, std::string> &hash);
+
+    std::unordered_map<std::string, std::string> invokerToHash(const wukong::proto::Invoker &invoker);
+
 }
 
 #endif //WUKONG_PROTO_H

@@ -36,6 +36,21 @@ namespace wukong::utils {
 
         static int ClientMaxConnectionsPerHost() { return clientMaxConnectionsPerHost; };
 
+        static int RedisPort() { return redisPort; };
+
+        static std::string RedisHostname() { return redisHostName; };
+
+        static std::string InvokerLBHost() { return invokerLBHost; };
+
+        static int InvokerLBPort() { return invokerLBPort; };
+
+        static std::string InvokerInitID() { return invokerInitID; };
+
+        static int InvokerCPU() { return invokerCPU; };
+
+        static int InvokerMemory() { return invokerMemory; };
+
+
         static void print();
 
     private:
@@ -61,7 +76,16 @@ namespace wukong::utils {
         const static int clientNumThreads;
         const static int clientMaxConnectionsPerHost;
 
+        /// Redis
+        const static int redisPort;
+        const static std::string redisHostName;
 
+        /// Invoker
+        const static std::string invokerLBHost;
+        const static int invokerLBPort;
+        const static std::string invokerInitID;
+        const static int invokerCPU;
+        const static int invokerMemory;
     };
 }
 

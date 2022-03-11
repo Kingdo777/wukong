@@ -49,7 +49,18 @@ private:
 
 class LoadBalance {
 public:
+
+    enum LBStatus {
+        Uninitialized,
+        Running,
+        Stopped
+    };
+
     LoadBalance() = default;
+
+    void handlerInvokerRegister(const std::string &host,
+                                const std::string &invokerJson,
+                                Pistache::Http::ResponseWriter response);
 
     void dispatch(wukong::proto::Message &&msg, Pistache::Http::ResponseWriter response);
 
@@ -59,10 +70,20 @@ public:
 
 private:
 
+    LBStatus status = Uninitialized;
+
     std::shared_ptr<LoadBalanceClientHandler> pickOneHandler();
 
-    wukong::client::ClientServer cs{};
+    std::pair<bool, std::string> invokerCheck(const wukong::proto::Invoker &invoker);
 
+    wukong::client::ClientServer cs;
+
+    std::atomic_uint invokerIndex = 0;
+
+    /// 用于存储invokerID
+    std::set<std::string> invokerSet;
+    /// 使用invokerID做索引，用于存储invoker的元数据
+    std::unordered_map<std::string, wukong::proto::Invoker> invokers;
 };
 
 

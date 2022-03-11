@@ -10,7 +10,6 @@
 #include "endpoint.h"
 
 void GlobalGatewayHandler::onRequest(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
-    SPDLOG_DEBUG("GlobalGatewayHandler received request..");
     TIMING_START(handler_request)
     // Very permissive CORS
     response.headers().add<Pistache::Http::Header::AccessControlAllowOrigin>(
@@ -85,8 +84,12 @@ GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request &request, Pist
         code = Pistache::Http::Code::Internal_Server_Error;
         result = "Empty request";
     } else {
-        wukong::proto::Message msg = wukong::proto::jsonToMessage(requestStr);
+        if (request.resource() == "/registerInvoker") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received registerInvoker request");
+            endpoint()->lb->handlerInvokerRegister(request.address().host(), request.body(), std::move(response));
+        } else {
+            //        wukong::proto::Message msg = wukong::proto::jsonToMessage(requestStr);
+            response.send(code, result);
+        }
     }
-
-    response.send(code, result);
 }

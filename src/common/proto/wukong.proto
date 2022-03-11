@@ -22,3 +22,28 @@ message Message {
   int64 finishTimestamp = 10;
 
 }
+
+message Function{
+  string user = 1;
+  string application = 2;
+  string functionName = 3;
+  uint32 concurrency = 4;
+  uint32 memory = 5;
+  uint32 cpu = 6;
+  string storageKey = 7;
+}
+
+message Invoker{
+  string invokerID = 1;
+  string IP = 2;
+  uint32 port = 3;
+  uint32 memory = 4;
+  uint32 cpu = 5;
+  uint64 registerTime = 6;
+}
+
+message ReplyRegisterInvoker{
+  bool success = 1;
+  string invokerID = 2;
+  string msg = 3;
+}

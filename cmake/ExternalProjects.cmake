@@ -100,6 +100,23 @@ else ()
 endif ()
 target_link_libraries(common_dependencies INTERFACE hiredis)
 
+#----------------------- fmt ------------------------------------
+find_package(fmt QUIET)
+if (NOT fmt_FOUND)
+    message("fmt not found.  Downloading it from source...")
+    FetchContent_Declare(
+            fmt
+            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+            GIT_TAG        8.1.1
+            GIT_SHALLOW true
+    )
+
+    FetchContent_MakeAvailable(fmt)
+    target_link_libraries(common_dependencies INTERFACE fmt)
+else ()
+    target_link_libraries(common_dependencies INTERFACE fmt)
+endif ()
+
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE
         pthread

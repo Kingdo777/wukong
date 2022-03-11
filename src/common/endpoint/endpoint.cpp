@@ -10,6 +10,7 @@ namespace wukong::endpoint {
             endpoint(Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(endpointPort))) {
         if (handler != nullptr)
             endpointHandler = handler;
+        endpointName = name;
     }
 
     void Endpoint::start() {

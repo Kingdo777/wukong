@@ -8,6 +8,11 @@ std::unordered_map<std::string, std::atomic<unsigned long>> timerTotals;
 std::unordered_map<std::string, std::atomic<int>> timerCounts;
 
 namespace wukong::utils {
+    uint64_t getMillsTimestamp() {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count();
+    }
 
     TimePoint Timing::now() {
         return std::chrono::steady_clock::now();

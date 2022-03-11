@@ -9,6 +9,8 @@
 
 namespace wukong::proto {
 
+    /// _______________________ For Message __________________________
+
     std::string messageToJson(const Message &msg) {
         rapidjson::Document d;
         d.SetObject();
@@ -98,5 +100,116 @@ namespace wukong::proto {
         return sb.GetString();
     }
 
+    /// _____________ For ReplyRegisterInvoker _______________________
 
+//    std::string messageToJson(const ReplyRegisterInvoker &msg) {
+//        rapidjson::Document d;
+//        d.SetObject();
+//        rapidjson::Document::AllocatorType &a = d.GetAllocator();
+//
+//        d.AddMember("success", msg.success(), a);
+//        d.AddMember("invokerID", rapidjson::Value(msg.invokerid().c_str(), msg.invokerid().size(), a).Move(), a);
+//        d.AddMember("msg", rapidjson::Value(msg.msg().c_str(), msg.msg().size(), a).Move(), a);
+//
+//        rapidjson::StringBuffer sb;
+//        rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+//        d.Accept(writer);
+//
+//        return sb.GetString();
+//    }
+//
+//    wukong::proto::ReplyRegisterInvoker jsonToReplyRegisterInvoker(const std::string &jsonIn) {
+//
+//        rapidjson::MemoryStream ms(jsonIn.c_str(), jsonIn.size());
+//        rapidjson::Document d;
+//        d.ParseStream(ms);
+//
+//        wukong::proto::ReplyRegisterInvoker msg;
+//        msg.set_success(utils::getBoolFromJson(d, "success", false));
+//        msg.set_invokerid(utils::getStringFromJson(d, "invokerID", ""));
+//        msg.set_msg(utils::getStringFromJson(d, "msg", ""));
+//
+//        return msg;
+//    }
+
+    /// _____________ For Invoker _______________________
+    std::string messageToJson(const Invoker &msg) {
+        rapidjson::Document d;
+        d.SetObject();
+        rapidjson::Document::AllocatorType &a = d.GetAllocator();
+
+        d.AddMember("invokerID", rapidjson::Value(msg.invokerid().c_str(), msg.invokerid().size(), a).Move(), a);
+        d.AddMember("IP", rapidjson::Value(msg.ip().c_str(), msg.ip().size(), a).Move(), a);
+        d.AddMember("port", msg.port(), a);
+        d.AddMember("memory", msg.memory(), a);
+        d.AddMember("cpu", msg.cpu(), a);
+        d.AddMember("registerTime", msg.registertime(), a);
+
+        rapidjson::StringBuffer sb;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+        d.Accept(writer);
+
+        return sb.GetString();
+    }
+
+    wukong::proto::Invoker jsonToInvoker(const std::string &jsonIn) {
+
+        rapidjson::MemoryStream ms(jsonIn.c_str(), jsonIn.size());
+        rapidjson::Document d;
+        d.ParseStream(ms);
+
+        wukong::proto::Invoker msg;
+        msg.set_invokerid(utils::getStringFromJson(d, "invokerID", ""));
+        msg.set_ip(utils::getStringFromJson(d, "IP", ""));
+        msg.set_port(utils::getIntFromJson(d, "port", 0));
+        msg.set_memory(utils::getIntFromJson(d, "memory", 0));
+        msg.set_cpu(utils::getIntFromJson(d, "cpu", 0));
+        msg.set_registertime(utils::getInt64FromJson(d, "registerTime", 0));
+
+        return msg;
+    }
+
+    std::string getStringFromHash(const std::string &key,
+                                  const std::unordered_map<std::string, std::string> &hash,
+                                  const std::string &dflt) {
+        auto iter = hash.find(key);
+        if (iter != hash.end())
+            return iter->second;
+        else
+            return dflt;
+    }
+
+    uint64_t getIntFromHash(const std::string &key,
+                            const std::unordered_map<std::string, std::string> &hash,
+                            int dflt) {
+        auto iter = hash.find(key);
+        if (iter != hash.end())
+            return strtol(iter->second.c_str(), nullptr, 10);
+        else
+            return dflt;
+    }
+
+    wukong::proto::Invoker hashToInvoker(const std::unordered_map<std::string, std::string> &hash) {
+        wukong::proto::Invoker msg;
+
+        msg.set_invokerid(getStringFromHash("invokerID", hash, ""));
+        msg.set_ip(getStringFromHash("IP", hash, ""));
+        msg.set_port(getIntFromHash("port", hash, 0));
+        msg.set_memory(getIntFromHash("memory", hash, 0));
+        msg.set_cpu(getIntFromHash("cpu", hash, 0));
+        msg.set_registertime(getIntFromHash("registerTime", hash, 0));
+
+        return msg;
+    }
+
+    std::unordered_map<std::string, std::string> invokerToHash(const Invoker &invoker) {
+        std::unordered_map<std::string, std::string> hash;
+        hash.insert(std::make_pair("invokerID", invoker.invokerid()));
+        hash.insert(std::make_pair("IP", invoker.ip()));
+        hash.insert(std::make_pair("port", std::to_string(invoker.port())));
+        hash.insert(std::make_pair("memory", std::to_string(invoker.memory())));
+        hash.insert(std::make_pair("cpu", std::to_string(invoker.cpu())));
+        hash.insert(std::make_pair("registerTime", std::to_string(invoker.registertime())));
+        return hash;
+    }
 }

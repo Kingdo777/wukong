@@ -13,7 +13,7 @@ endif ()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall")
 # -g 使可执行文件便于调试(https://blog.csdn.net/andrewgithub/article/details/108962057)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 option(ENABLE_TRACE "Statistics execution time" ON)
 
@@ -53,3 +53,5 @@ endfunction()
 
 add_subdirectory(src/common)
 add_subdirectory(src/global-gateway)
+add_subdirectory(src/invoker)
+add_subdirectory(tool)
