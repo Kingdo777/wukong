@@ -40,12 +40,12 @@ void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::Funct
     std::string funcEntryIndex = wukong::utils::randomString(15);
     functionCallMap.insert(std::make_pair(funcEntryIndex, std::move(entry)));
     res.then(
-            [&](Pistache::Http::Response response) {
+            [=, this](Pistache::Http::Response response) {
                 auto code = response.code();
                 std::string result = response.body();
                 responseFunctionCall(code, result, funcEntryIndex);
             },
-            [&](std::exception_ptr exc) {
+            [=, this](std::exception_ptr exc) {
                 try {
                     std::rethrow_exception(std::move(exc));
                 }
@@ -66,8 +66,9 @@ void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, s
                                                     const std::string &funcEntryIndex) {
     auto iter = functionCallMap.find(funcEntryIndex);
     if (iter == functionCallMap.end()) {
-        code = Pistache::Http::Code::Internal_Server_Error;
-        result = "functionCall not Find in functionCallMap\n";
+        SPDLOG_ERROR(fmt::format("functionCall not Find in functionCallMap, with funcEntryIndex `{}`",
+                                 funcEntryIndex));
+        return;
     }
     iter->second.response.send(code, result);
     functionCallMap.erase(iter);
@@ -205,4 +206,37 @@ void LoadBalance::handlerInvokerRegister(const std::string &host,
     }
 
 
+}
+
+std::string LoadBalance::getInvokersInfo() {
+//    rapidjson::Document invokersInfo;
+//    invokersInfo.SetObject();
+//    rapidjson::Document::AllocatorType &a = invokersInfo.GetAllocator();
+//    for (const auto &invokerID: invokerSet) {
+//        wukong::proto::Invoker invoker = invokers[invokerID];
+//        auto invokerJsonString = messageToJson(invoker);
+//        SPDLOG_DEBUG(invokerJsonString);
+//        rapidjson::MemoryStream ms(invokerJsonString.c_str(), invokerJsonString.size());
+//        rapidjson::Document d;
+//        d.ParseStream(ms);
+//        rapidjson::Value invokerIDValue;
+//        invokerIDValue.SetString(invokerID.c_str(), a);
+//        invokersInfo.AddMember(invokerIDValue, d.GetObject(), a);
+//    }
+//    rapidjson::StringBuffer sb;
+//    rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+//    invokersInfo.Accept(writer);
+//    return sb.GetString();
+
+    std::string invokersInfoJson = "[";
+
+    for (const auto &invokerID: invokerSet) {
+        wukong::proto::Invoker invoker = invokers[invokerID];
+        auto invokerJsonString = messageToJson(invoker);
+        SPDLOG_DEBUG(invokerJsonString);
+        invokersInfoJson += fmt::format("{},", invokerJsonString);
+    }
+    invokersInfoJson = invokersInfoJson.substr(0, invokersInfoJson.length() - 1);
+    invokersInfoJson += "]";
+    return invokersInfoJson;
 }

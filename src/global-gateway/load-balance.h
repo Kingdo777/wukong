@@ -8,6 +8,7 @@
 #include <wukong/endpoint/endpoint.h>
 #include "wukong/client/client-server.h"
 #include <wukong/proto/proto.h>
+#include <wukong/utils/json.h>
 
 #include <map>
 
@@ -67,6 +68,9 @@ public:
     void start();
 
     void stop();
+
+
+    std::string getInvokersInfo();
 
 private:
 

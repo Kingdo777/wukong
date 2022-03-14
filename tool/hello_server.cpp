@@ -8,11 +8,7 @@ public:
 HTTP_PROTOTYPE(HelloHandler)
 
     void onRequest(const Http::Request & /*request*/, Http::ResponseWriter response) override {
-        wukong::proto::ReplyRegisterInvoker msg;
-        msg.set_success(true);
-        msg.set_invokerid("invoker1");
-        msg.set_msg("OK");
-        response.send(Pistache::Http::Code::Ok, wukong::proto::messageToJson(msg));
+        response.send(Pistache::Http::Code::Ok, "Hello Wukong");
     }
 };
 

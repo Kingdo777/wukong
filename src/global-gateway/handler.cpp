@@ -55,21 +55,29 @@ void GlobalGatewayHandler::onTimeout(const Pistache::Http::Request &, Pistache::
 void
 GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
 
+    if (request.resource() == "/ping") {
+        SPDLOG_DEBUG("GlobalGatewayHandler received ping request");
+        response.send(Pistache::Http::Code::Ok, "PONG");
+    } else if (request.resource() == "/get_invokers_info") {
+        SPDLOG_DEBUG("GlobalGatewayHandler received get_invokers_info request");
+        auto invokersInfo = e->lb->getInvokersInfo();
+        response.send(Pistache::Http::Code::Ok, invokersInfo);
+    } else {
+        wukong::proto::Message msg;
+        msg.set_id(wukong::utils::uuid());
+        msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
 
-    wukong::proto::Message msg;
-    msg.set_id(wukong::utils::uuid());
-    msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
+        msg.set_application("test");
+        msg.set_function("hello");
 
-    msg.set_application("test");
-    msg.set_function("hello");
+        msg.set_isasync(true);
 
-    msg.set_isasync(true);
+        msg.set_inputdata("");
 
-    msg.set_inputdata("");
+        msg.set_timestamp(time(nullptr));
 
-    msg.set_timestamp(time(nullptr));
-
-    endpoint()->lb->dispatch(std::move(msg), std::move(response));
+        endpoint()->lb->dispatch(std::move(msg), std::move(response));
+    }
 }
 
 void

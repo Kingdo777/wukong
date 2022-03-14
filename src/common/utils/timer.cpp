@@ -14,7 +14,7 @@ namespace wukong::utils {
         Pistache::Polling::Tag tag(timer_fd);
         poller.addFd(timer_fd, Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Read), tag);
         shutdownFd.bind(poller);
-        thread = std::thread([=]() {
+        thread = std::thread([=, this]() {
             if (!threadsName.empty()) {
                 pthread_setname_np(pthread_self(),
                                    threadsName.substr(0, 15).c_str());
