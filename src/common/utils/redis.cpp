@@ -129,4 +129,18 @@ namespace wukong::utils {
             throw std::runtime_error("Failed to add element to set");
         }
     }
+
+    std::string Redis::get(const std::string &key) {
+        auto reply = safeRedisCommand("GET %s", key.c_str());
+        return std::string{reply->str, reply->len};
+    }
+
+    void Redis::set(const std::string &key, const std::string &value) {
+        auto reply =
+                safeRedisCommand("SET %s %b", key.c_str(), value.c_str(), value.size());
+
+        if (reply->type == REDIS_REPLY_ERROR) {
+            SPDLOG_ERROR("Failed to SET {} - {}", key.c_str(), reply->str);
+        }
+    }
 }

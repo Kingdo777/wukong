@@ -2,7 +2,6 @@ import json
 from os import mkdir
 from os.path import exists, realpath, dirname
 from time import localtime, strftime
-
 import requests
 from invoke import task
 from wk.utils.ping import ping, test_connect
@@ -49,15 +48,15 @@ def invokers(context):
         return
     host = conn[2]
     port = conn[3]
-    url = "http://{}:{}/get_invokers_info".format(host, port)
+    url = "http://{}:{}/invoker/info".format(host, port)
     try:
-        response = requests.get(url)
+        response = requests.post(url)
     except requests.exceptions.RequestException:
         print("access {} failed", url)
         return
     else:
         if not response.status_code == 200:
-            print("get wrong status_code : {}", response.status_code)
+            print("get wrong status_code : {},{}", response.status_code, response.text)
             return
         invokers_list = sorted(json.loads(response.text), key=lambda invoker: invoker['registerTime'])
         print("{:<20}{:<15}{:<8}{:<8}{:<8}{:<20}".

@@ -26,7 +26,29 @@ namespace wukong::proto {
 
     wukong::proto::Invoker hashToInvoker(const std::unordered_map<std::string, std::string> &hash);
 
-    std::unordered_map<std::string, std::string> invokerToHash(const wukong::proto::Invoker &invoker);
+    std::unordered_map<std::string, std::string> messageToHash(const wukong::proto::Invoker &invoker);
+
+    std::unordered_map<std::string, std::string> messageToHash(const User &user);
+
+    std::string messageToJson(const User &user);
+
+    std::unordered_map<std::string, std::string> messageToHash(const Application &application);
+
+    std::string messageToJson(const Application &application);
+
+    std::unordered_map<std::string, std::string> messageToHash(const Function &function);
+
+    wukong::proto::Function hashToFunction(const std::unordered_map<std::string, std::string> &hash);
+
+    std::string messageToJson(const Function &function);
+
+    wukong::proto::User hashToUser(const std::unordered_map<std::string, std::string> &hash);
+
+    wukong::proto::Application hashToApplication(const std::unordered_map<std::string, std::string> &hash);
+
+    wukong::proto::Application jsonToApplication(const std::string &jsonIn);
+
+    wukong::proto::User jsonToUser(const std::string &jsonIn);
 
 }
 

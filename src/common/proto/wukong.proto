@@ -23,6 +23,15 @@ message Message {
 
 }
 
+message User{
+  string userName = 1;
+}
+
+message Application{
+  string user = 1;
+  string appName = 2;
+}
+
 message Function{
   string user = 1;
   string application = 2;

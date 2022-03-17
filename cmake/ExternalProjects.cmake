@@ -120,6 +120,7 @@ endif ()
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE
         pthread
+        dl
         ${Protobuf_LIBRARIES}
         )
 

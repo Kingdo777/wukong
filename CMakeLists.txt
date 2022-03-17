@@ -54,4 +54,8 @@ endfunction()
 add_subdirectory(src/common)
 add_subdirectory(src/global-gateway)
 add_subdirectory(src/invoker)
+
 add_subdirectory(tool)
+add_subdirectory(function/cpp/kingdo/test/hello)
+add_subdirectory(function/cpp/kingdo/test/hello1)
+add_subdirectory(function/cpp/kingdo/test/hello2)

@@ -7,6 +7,7 @@
 
 #include <wukong/utils/log.h>
 #include <wukong/utils/string-tool.h>
+#include <wukong/utils/radom.h>
 
 #include <string>
 #include <mutex>
@@ -18,9 +19,16 @@
 
 
 /// Redis_keys
+#define SET_INVOKER_ID_REDIS_KEY                        "SET_INVOKER_ID"
+#define SET_USERS_REDIS_KEY                             "SET_USERS"
+#define SET_APPLICATION_REDIS_KEY(username)             ("SET_APPLICATION_#" + (username))
+#define SET_FUNCTION_REDIS_KEY(username, appname)       ("SET_FUNCTION_#" + (username) + "#" + (appname))
 
-#define SET_INVOKER_ID "SET_invokerID"
-#define HASH_INVOKER    "HASH_invoker"
+#define USER_REDIS_KEY(username)                        ("USER_#" + (username))
+#define APPLICATION_REDIS_KEY(username, appname)        ("APPLICATION_#" + (username) + "#" + (appname))
+#define FUNCTION_REDIS_KEY(username, appname, funcname) ("FUNCTION_" + (username) + "#" + (appname) + "#" + (funcname))
+
+#define FUNCTION_CODE_STORAGE_KEY(username, appname, funcname)  ((username) + "#" + (appname) + "#" + (funcname) + "#" + wukong::utils::randomString(5))
 
 namespace wukong::utils {
 
@@ -41,6 +49,10 @@ namespace wukong::utils {
         Redis();
 
         ~Redis();
+
+        std::string get(const std::string &key);
+
+        void set(const std::string &key, const std::string &value);
 
         /// 删除key
         void del(const std::string &key);

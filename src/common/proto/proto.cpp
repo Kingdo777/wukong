@@ -202,7 +202,7 @@ namespace wukong::proto {
         return msg;
     }
 
-    std::unordered_map<std::string, std::string> invokerToHash(const Invoker &invoker) {
+    std::unordered_map<std::string, std::string> messageToHash(const Invoker &invoker) {
         std::unordered_map<std::string, std::string> hash;
         hash.insert(std::make_pair("invokerID", invoker.invokerid()));
         hash.insert(std::make_pair("IP", invoker.ip()));
@@ -211,5 +211,137 @@ namespace wukong::proto {
         hash.insert(std::make_pair("cpu", std::to_string(invoker.cpu())));
         hash.insert(std::make_pair("registerTime", std::to_string(invoker.registertime())));
         return hash;
+    }
+
+    /// _____________ For User _______________________
+
+    std::unordered_map<std::string, std::string> messageToHash(const User &user) {
+        std::unordered_map<std::string, std::string> hash;
+        hash.insert(std::make_pair("name", user.username()));
+        return hash;
+    }
+
+    wukong::proto::User hashToUser(const std::unordered_map<std::string, std::string> &hash) {
+        wukong::proto::User msg;
+        msg.set_username(hash.at("name"));
+        return msg;
+    }
+
+    wukong::proto::User jsonToUser(const std::string &jsonIn) {
+
+        rapidjson::MemoryStream ms(jsonIn.c_str(), jsonIn.size());
+        rapidjson::Document d;
+        d.ParseStream(ms);
+
+        wukong::proto::User msg;
+        msg.set_username(utils::getStringFromJson(d, "name", ""));
+
+        return msg;
+    }
+
+    /// _____________ For Application _______________________
+    std::unordered_map<std::string, std::string> messageToHash(const Application &application) {
+        std::unordered_map<std::string, std::string> hash;
+        hash.insert(std::make_pair("name", application.appname()));
+        hash.insert(std::make_pair("user", application.user()));
+        return hash;
+    }
+
+
+    wukong::proto::Application jsonToApplication(const std::string &jsonIn) {
+
+        rapidjson::MemoryStream ms(jsonIn.c_str(), jsonIn.size());
+        rapidjson::Document d;
+        d.ParseStream(ms);
+
+        wukong::proto::Application msg;
+        msg.set_appname(utils::getStringFromJson(d, "name", ""));
+        msg.set_user(utils::getStringFromJson(d, "user", ""));
+
+        return msg;
+    }
+
+    wukong::proto::Application hashToApplication(const std::unordered_map<std::string, std::string> &hash) {
+        wukong::proto::Application msg;
+        msg.set_user(hash.at("user"));
+        msg.set_appname(hash.at("name"));
+        return msg;
+    }
+
+    /// _____________ For Function _______________________
+    std::unordered_map<std::string, std::string> messageToHash(const Function &function) {
+        std::unordered_map<std::string, std::string> hash;
+        hash.insert(std::make_pair("name", function.functionname()));
+        hash.insert(std::make_pair("user", function.user()));
+        hash.insert(std::make_pair("application", function.application()));
+        hash.insert(std::make_pair("concurrency", std::to_string(function.concurrency())));
+        hash.insert(std::make_pair("memory", std::to_string(function.memory())));
+        hash.insert(std::make_pair("cpu", std::to_string(function.cpu())));
+        hash.insert(std::make_pair("storageKey", function.storagekey()));
+        return hash;
+    }
+
+    wukong::proto::Function hashToFunction(const std::unordered_map<std::string, std::string> &hash) {
+        wukong::proto::Function msg;
+        msg.set_user(hash.at("user"));
+        msg.set_application(hash.at("application"));
+        msg.set_functionname(hash.at("name"));
+        msg.set_concurrency(strtol(hash.at("concurrency").c_str(), nullptr, 10));
+        msg.set_memory(strtol(hash.at("memory").c_str(), nullptr, 10));
+        msg.set_cpu(strtol(hash.at("cpu").c_str(), nullptr, 10));
+        msg.set_storagekey(hash.at("storageKey"));
+        return msg;
+    }
+
+    std::string messageToJson(const User &user) {
+        rapidjson::Document d;
+        d.SetObject();
+        rapidjson::Document::AllocatorType &a = d.GetAllocator();
+
+        d.AddMember("name", rapidjson::Value(user.username().c_str(), user.username().size(), a).Move(), a);
+
+        rapidjson::StringBuffer sb;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+        d.Accept(writer);
+
+        return sb.GetString();
+    }
+
+    std::string messageToJson(const Application &application) {
+        rapidjson::Document d;
+        d.SetObject();
+        rapidjson::Document::AllocatorType &a = d.GetAllocator();
+
+        d.AddMember("name", rapidjson::Value(application.appname().c_str(), application.appname().size(), a).Move(), a);
+        d.AddMember("user", rapidjson::Value(application.user().c_str(), application.user().size(), a).Move(), a);
+
+        rapidjson::StringBuffer sb;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+        d.Accept(writer);
+
+        return sb.GetString();
+    }
+
+    std::string messageToJson(const Function &function) {
+        rapidjson::Document d;
+        d.SetObject();
+        rapidjson::Document::AllocatorType &a = d.GetAllocator();
+
+        d.AddMember("name", rapidjson::Value(function.functionname().c_str(), function.functionname().size(), a).Move(),
+                    a);
+        d.AddMember("user", rapidjson::Value(function.user().c_str(), function.user().size(), a).Move(), a);
+        d.AddMember("application",
+                    rapidjson::Value(function.application().c_str(), function.application().size(), a).Move(), a);
+        d.AddMember("concurrency", function.concurrency(), a);
+        d.AddMember("memory", function.memory(), a);
+        d.AddMember("cpu", function.cpu(), a);
+        d.AddMember("storageKey",
+                    rapidjson::Value(function.storagekey().c_str(), function.storagekey().size(), a).Move(), a);
+
+        rapidjson::StringBuffer sb;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+        d.Accept(writer);
+
+        return sb.GetString();
     }
 }

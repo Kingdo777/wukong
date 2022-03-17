@@ -24,13 +24,13 @@ def test_connect():
         try:
             conf = json.loads(f.read())
         except json.JSONDecodeError:
-            return False, "config is illegal"
+            return False, "config is illegal", "", ""
         else:
             host = conf["GW_HOST"]
             port = conf["GW_PORT"]
             if ping(host, port):
                 return True, "testing connect to {}:{} Success".format(host, port), host, port
             else:
-                return False, "testing connect to {}:{} Failed".format(host, port)
+                return False, "testing connect to {}:{} Failed".format(host, port), "", ""
     else:
-        return False, "config is not exists"
+        return False, "config is not exists", "", ""

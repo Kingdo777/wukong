@@ -10,7 +10,6 @@
 #include "endpoint.h"
 
 void GlobalGatewayHandler::onRequest(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
-    TIMING_START(handler_request)
     // Very permissive CORS
     response.headers().add<Pistache::Http::Header::AccessControlAllowOrigin>(
             "*");
@@ -43,7 +42,6 @@ void GlobalGatewayHandler::onRequest(const Pistache::Http::Request &request, Pis
             response.send(Pistache::Http::Code::Method_Not_Allowed, "Only GET && POST Method Allowed\n");
             break;
     }
-    TIMING_END(handler_request)
 }
 
 void GlobalGatewayHandler::onTimeout(const Pistache::Http::Request &, Pistache::Http::ResponseWriter response) {
@@ -58,10 +56,6 @@ GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pista
     if (request.resource() == "/ping") {
         SPDLOG_DEBUG("GlobalGatewayHandler received ping request");
         response.send(Pistache::Http::Code::Ok, "PONG");
-    } else if (request.resource() == "/get_invokers_info") {
-        SPDLOG_DEBUG("GlobalGatewayHandler received get_invokers_info request");
-        auto invokersInfo = e->lb->getInvokersInfo();
-        response.send(Pistache::Http::Code::Ok, invokersInfo);
     } else {
         wukong::proto::Message msg;
         msg.set_id(wukong::utils::uuid());
@@ -82,22 +76,93 @@ GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pista
 
 void
 GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
-    const std::string &requestStr = request.body();
 
-    Pistache::Http::Code code = Pistache::Http::Code::Ok;
-    std::string result;
-
-    if (requestStr.empty()) {
-        SPDLOG_ERROR("Wukong handler received empty request");
-        code = Pistache::Http::Code::Internal_Server_Error;
-        result = "Empty request";
-    } else {
-        if (request.resource() == "/registerInvoker") {
-            SPDLOG_DEBUG("GlobalGatewayHandler received registerInvoker request");
-            endpoint()->lb->handlerInvokerRegister(request.address().host(), request.body(), std::move(response));
-        } else {
-            //        wukong::proto::Message msg = wukong::proto::jsonToMessage(requestStr);
-            response.send(code, result);
+    const std::string &uri = request.resource();
+    if (uri.starts_with("/invoker")) {
+        if (uri == "/invoker/register") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /invoker/register request");
+            endpoint()->lb->handleInvokerRegister(request.address().host(), request.body(), std::move(response));
+            return;
+        }
+        if (request.resource() == "/invoker/info") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received get_invokers_info request");
+            endpoint()->lb->handleInvokerInfo(std::move(response));
+            return;
+        }
+    } else if (uri.starts_with("/user")) {
+        if (uri == "/user/register") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /user/register request");
+            wukong::proto::User user = wukong::proto::jsonToUser(request.body());
+            endpoint()->lb->handleUserRegister(user, std::move(response));
+            return;
+        }
+        if (uri == "/user/delete") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /user/delete request");
+            wukong::proto::User user = wukong::proto::jsonToUser(request.body());
+            endpoint()->lb->handleUserDelete(user, std::move(response));
+            return;
+        }
+        if (uri == "/user/info") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /user/info request");
+            const auto &cookies = request.cookies();
+            auto username = cookies.get("user").value;
+            endpoint()->lb->handleUserInfo(username, std::move(response));
+            return;
+        }
+    } else if (uri.starts_with("/application")) {
+        if (uri == "/application/create") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /application/create request");
+            wukong::proto::Application application = wukong::proto::jsonToApplication(request.body());
+            endpoint()->lb->handleAppCreate(application, std::move(response));
+            return;
+        }
+        if (uri == "/application/delete") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /application/delete request");
+            wukong::proto::Application application = wukong::proto::jsonToApplication(request.body());
+            endpoint()->lb->handleAppDelete(application, std::move(response));
+            return;
+        }
+        if (uri == "/application/info") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /application/info request");
+            const auto &cookies = request.cookies();
+            auto username = cookies.get("user").value;
+            auto appname = cookies.get("application").value;
+            endpoint()->lb->handleAppInfo(username, appname, std::move(response));
+            return;
+        }
+    } else if (uri.starts_with("/function")) {
+        if (uri == "/function/register") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /function/register request");
+            wukong::proto::Function function;
+            const auto &cookies = request.cookies();
+            function.set_user(cookies.get("user").value);
+            function.set_application(cookies.get("application").value);
+            function.set_functionname(cookies.get("function").value);
+            function.set_concurrency(strtol(cookies.get("concurrency").value.c_str(), nullptr, 10));
+            function.set_memory(strtol(cookies.get("memory").value.c_str(), nullptr, 10));
+            function.set_cpu(strtol(cookies.get("cpu").value.c_str(), nullptr, 10));
+            endpoint()->lb->handleFuncRegister(function, request.body(), std::move(response));
+            return;
+        }
+        if (uri == "/function/delete") {
+            const auto &cookies = request.cookies();
+            auto username = cookies.get("user").value;
+            auto appname = cookies.get("application").value;
+            auto funcname = cookies.get("function").value;
+            endpoint()->lb->handleFuncDelete(username, appname, funcname, std::move(response));
+            return;
+        }
+        if (uri == "/function/info") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /function/info request");
+            const auto &cookies = request.cookies();
+            auto username = cookies.get("user").value;
+            auto appname = cookies.get("application").value;
+            auto funcname = cookies.get("function").value;
+            endpoint()->lb->handleFuncInfo(username, appname, funcname, std::move(response));
+            return;
         }
     }
+    SPDLOG_WARN(fmt::format("GlobalGatewayHandler received Unsupported request ： {}", uri));
+    response.send(Pistache::Http::Code::Bad_Request, fmt::format("Unsupported request : {}", uri));
+
 }

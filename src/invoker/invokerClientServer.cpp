@@ -13,7 +13,7 @@ std::pair<bool, std::string> InvokerClientServer::register2LB(const std::string 
     if (!registered) {
         std::string LBHost = wukong::utils::Config::InvokerLBHost();
         int LBPort = wukong::utils::Config::InvokerLBPort();
-        std::string uri = LBHost + ":" + std::to_string(LBPort) + "/registerInvoker";
+        std::string uri = LBHost + ":" + std::to_string(LBPort) + "/invoker/register";
         auto rsp = this->post(uri).body(invokerJson).timeout(std::chrono::seconds(5)).send();
         while (rsp.isPending());
         rsp.then(
