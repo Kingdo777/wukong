@@ -9,17 +9,18 @@ message Message {
   uint32 id = 1;
   MessageType type = 2;
 
-  string application = 3;
-  string function = 4;
+  string user = 3;
+  string application = 4;
+  string function = 5;
 
-  bool isAsync = 5;
+  bool isAsync = 6;
 
-  bytes inputData = 6;
-  bytes outputData = 7;
-  string resultKey = 8;
+  bytes inputData = 7;
+  bytes outputData = 8;
+  string resultKey = 9;
 
-  int64 timestamp = 9;
-  int64 finishTimestamp = 10;
+  int64 timestamp = 10;
+  int64 finishTimestamp = 11;
 
 }
 
@@ -33,6 +34,12 @@ message Application{
 }
 
 message Function{
+
+  enum FunctionType{
+    C_CPP = 0;
+    PYTHON = 1;
+  }
+
   string user = 1;
   string application = 2;
   string functionName = 3;
@@ -40,6 +47,9 @@ message Function{
   uint32 memory = 5;
   uint32 cpu = 6;
   string storageKey = 7;
+
+  FunctionType type = 8;
+
 }
 
 message Invoker{
@@ -55,4 +65,18 @@ message ReplyRegisterInvoker{
   bool success = 1;
   string invokerID = 2;
   string msg = 3;
+}
+
+message Instance{
+  string user = 1;
+  string application = 2;
+  string invokerID = 3;
+
+  string host = 4;
+  string port = 5;
+}
+
+message ReplyStartupInstance{
+  string host = 1;
+  string port = 2;
 }

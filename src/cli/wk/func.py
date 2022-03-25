@@ -7,7 +7,7 @@ from wk.utils.env import WUKONG_BUILD_DIR
 
 
 @task
-def register(context, file="", username='kingdo', appname='test', funcname='hello',
+def register(context, file="", username='kingdo', appname='test', funcname='hello', func_type='c/cpp',
              concurrency=1,
              memory=1024,
              cpu=1000):
@@ -17,23 +17,33 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
         return
     if file != "" and exists(file):
         conf = json.loads(open(file, "r").read())
-        username, appname, funcname, concurrency, memory, cpu = \
-            conf['user'], conf['test'], conf['hello'], conf['concurrency'], conf['memory'], conf['cpu']
+        username, appname, funcname, concurrency, memory, cpu, func_type = \
+            conf['user'], conf['test'], conf['hello'], conf['concurrency'], conf['memory'], conf['cpu'], conf['type']
     function_so_path = join(WUKONG_BUILD_DIR, "lib", "libfunc_{}.so".format(funcname))
     if not exists(function_so_path):
         print("{} is not exists".format(function_so_path))
+        return
     elif username == '':
         print("user is empty")
+        return
     elif appname == '':
         print("application is empty")
+        return
     elif funcname == '':
         print("function is empty")
+        return
     elif concurrency < 1 or concurrency > 1000:
         print("concurrency < 1 or concurrency > 1000")
+        return
     elif memory < 64 or memory > 1024:
         print("memory < 64 or memory > 1024")
+        return
     elif cpu < 100 or cpu > 4000:
         print("cpu < 100 or cpu > 4000")
+        return
+    elif func_type != 'c/cpp' and func_type != 'python':
+        print("type must is c/cpp or python")
+        return
     else:
         url = "http://{}:{}/function/register".format(host, port)
         cookies = {
@@ -43,6 +53,7 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
             "concurrency": str(concurrency),
             "memory": str(memory),
             "cpu": str(cpu),
+            "type": str(func_type)
         }
         res = requests.post(url, data=open(function_so_path, "rb"), cookies=cookies)
         if res.status_code == 200 and res.text == "Ok":

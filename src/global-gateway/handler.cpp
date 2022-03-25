@@ -61,13 +61,12 @@ GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pista
         msg.set_id(wukong::utils::uuid());
         msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
 
+        msg.set_user("kingdo");
         msg.set_application("test");
         msg.set_function("hello");
-
         msg.set_isasync(true);
-
+        msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
         msg.set_inputdata("");
-
         msg.set_timestamp(time(nullptr));
 
         endpoint()->lb->dispatch(std::move(msg), std::move(response));
@@ -141,6 +140,9 @@ GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request &request, Pist
             function.set_concurrency(strtol(cookies.get("concurrency").value.c_str(), nullptr, 10));
             function.set_memory(strtol(cookies.get("memory").value.c_str(), nullptr, 10));
             function.set_cpu(strtol(cookies.get("cpu").value.c_str(), nullptr, 10));
+            auto type = cookies.get("type").value;
+            std::transform(type.begin(), type.end(), type.begin(), ::tolower);
+            function.set_type(wukong::proto::FunctionTypeNameMAP.at(type));
             endpoint()->lb->handleFuncRegister(function, request.body(), std::move(response));
             return;
         }

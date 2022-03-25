@@ -9,14 +9,33 @@
 #include <wukong/utils/log.h>
 #include <wukong/utils/json.h>
 
+static bool clientServerStarted = false;
+static wukong::client::ClientServer invokerClientServer;
 
-class InvokerClientServer : public wukong::client::ClientServer {
-    typedef wukong::client::ClientServer Base;
+class InvokerClientServer {
 public:
-    std::pair<bool, std::string> register2LB(const std::string& invokerJson);
+    static void start() {
+        if (!clientServerStarted) {
+            // TODO Invoker的clientServer线程数，应给设置为1
+            auto opts = Pistache::Http::Client::options().
+                    threads(wukong::utils::Config::ClientNumThreads()).
+                    maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
+            invokerClientServer.start(opts);
+            clientServerStarted = true;
+        }
+    }
 
-    bool registered = false;
+    static void shutdown() {
+        if (clientServerStarted)
+            invokerClientServer.shutdown();
+    }
+
+    static wukong::client::ClientServer &client() {
+        if (clientServerStarted)
+            return invokerClientServer;
+        SPDLOG_ERROR("ClientServer is not start!");
+        assert(false);
+    }
 };
-
 
 #endif //WUKONG_INVOKERCLIENTSERVER_H

@@ -9,3 +9,6 @@ target_link_libraries(tool-dl_test utils dl)
 
 add_executable(tool-test test_cpp.cpp)
 target_link_libraries(tool-test pthread)
+
+add_executable(tool-process subProcess.cpp)
+target_link_libraries(tool-process common_dependencies pthread wukong::utils)

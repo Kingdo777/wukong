@@ -16,6 +16,8 @@
 
 #define DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST    8
 
+/// pause的实例，超时后被移除
+#define INSTANCE_PAUSE_TIMEOUT (60*60)
 
 namespace wukong::utils {
     class Config {
@@ -40,9 +42,9 @@ namespace wukong::utils {
 
         static std::string RedisHostname() { return redisHostName; };
 
-        static std::string InvokerLBHost() { return invokerLBHost; };
+        static std::string LBHost() { return lbHost; };
 
-        static int InvokerLBPort() { return invokerLBPort; };
+        static int LBPort() { return lbPort; };
 
         static std::string InvokerInitID() { return invokerInitID; };
 
@@ -50,6 +52,11 @@ namespace wukong::utils {
 
         static int InvokerMemory() { return invokerMemory; };
 
+        static uint64_t PausedTimeout() { return pauseTimeout; };
+
+        static std::string InvokerHost() { return invokerHost; };
+
+        static int InvokerPort() { return invokerPort; };
 
         static void print();
 
@@ -80,12 +87,17 @@ namespace wukong::utils {
         const static int redisPort;
         const static std::string redisHostName;
 
+        /// LB
+        const static int lbPort;
+        const static std::string lbHost;
+
         /// Invoker
-        const static std::string invokerLBHost;
-        const static int invokerLBPort;
+        const static int invokerPort;
+        const static std::string invokerHost;
         const static std::string invokerInitID;
         const static int invokerCPU;
         const static int invokerMemory;
+        const static uint64_t pauseTimeout;
     };
 }
 

@@ -3,11 +3,15 @@
 //
 
 #include <wukong/utils/dl.h>
+#include <sys/stat.h>
+#include <fmt/format.h>
 
 namespace wukong::utils {
 
     int Lib::open(const std::string &code) {
-        std::string filename = "/tmp/wukong/lib" + randomString(15) + ".so";
+        const std::string libDir = "/tmp/wukong";
+        std::string filename = fmt::format("{}/lib{}.so", libDir, randomString(15));
+        system(fmt::format("mkdir -p {}", libDir).c_str());
         std::ofstream f;
         f.open(filename.c_str(), std::ios::out | std::ios::binary);
         f << code;

@@ -1,10 +1,13 @@
-file(GLOB GLOBAL_GATEWAY_SOURCES_FILE *.cpp *.cc *.h)
+add_subdirectory(instance-proxy)
 
-add_executable(invoker ${GLOBAL_GATEWAY_SOURCES_FILE})
+file(GLOB INVOKER_SOURCES_FILES *.cpp *.cc *.h)
+
+add_executable(invoker ${INVOKER_SOURCES_FILES})
 target_link_libraries(invoker
         wukong::endpoint
         wukong::client-server
         wukong::utils
         wukong::proto
+        wukong::invoker::proxy
         )
-add_dependencies(invoker wukong::proto)
+add_dependencies(invoker wukong::proto wukong::invoker::proxy)

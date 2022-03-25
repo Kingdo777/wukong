@@ -6,6 +6,7 @@
 
 int main() {
     wukong::utils::initLog();
+    SPDLOG_INFO("-------------------global-gateway config--------------------");
     wukong::utils::Config::print();
     SIGNAL_HANDLER()
     GlobalGatewayEndpoint e;

@@ -3,12 +3,30 @@
 //
 
 #include "invokerEndpoint.h"
+#include "invoker.h"
 
-void InvokerHandler::onRequest(const Pistache::Http::Request &req, Pistache::Http::ResponseWriter response) {
-    if (req.resource() == "/ping") {
-        if (req.method() == Pistache::Http::Method::Get) {
-            response.send(Pistache::Http::Code::Ok, "PONG");
-        }
+void InvokerHandler::onRequest(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
+    // Very permissive CORS
+    response.headers().add<Pistache::Http::Header::AccessControlAllowOrigin>(
+            "*");
+    response.headers().add<Pistache::Http::Header::AccessControlAllowMethods>(
+            "GET,POST,PUT,OPTIONS");
+    response.headers().add<Pistache::Http::Header::AccessControlAllowHeaders>(
+            "User-Agent,Content-Type");
+    // Text response type
+    response.headers().add<Pistache::Http::Header::ContentType>(
+            Pistache::Http::Mime::MediaType("text/plain"));
+
+    switch (request.method()) {
+        case Pistache::Http::Method::Get:
+            handleGetReq(request, std::move(response));
+            break;
+        case Pistache::Http::Method::Post:
+            handlePostReq(request, std::move(response));
+            break;
+        default:
+            response.send(Pistache::Http::Code::Method_Not_Allowed, "Only GET && POST Method Allowed\n");
+            break;
     }
 }
 
@@ -17,11 +35,48 @@ void InvokerHandler::onTimeout(const Pistache::Http::Request &, Pistache::Http::
             .then([=](ssize_t) {}, PrintException());
 }
 
+void InvokerHandler::handleGetReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
+    const std::string &uri = request.resource();
+    if (uri == "/ping") {
+        SPDLOG_DEBUG("GlobalGatewayHandler received ping request");
+        response.send(Pistache::Http::Code::Ok, "PONG");
+        return;
+    }
+    SPDLOG_WARN(fmt::format("GlobalGatewayHandler received Unsupported request ： {}", uri));
+    response.send(Pistache::Http::Code::Bad_Request, fmt::format("Unsupported request : {}", uri));
+}
+
+void InvokerHandler::handlePostReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
+    const std::string &uri = request.resource();
+    if (uri == "/ping") {
+        SPDLOG_DEBUG("GlobalGatewayHandler received ping request");
+        response.send(Pistache::Http::Code::Ok, "PONG");
+        return;
+    }
+    if (uri.starts_with("/function")) {
+        if (uri == "/function/startup") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /function/startup request");
+            wukong::proto::Function func = wukong::proto::jsonToFunction(request.body());
+            endpoint()->invoker()->startupInstance(func, std::move(response));
+            return;
+        }
+        if (uri == "/function/shutdown") {
+            SPDLOG_DEBUG("GlobalGatewayHandler received /function/shutdown request");
+            wukong::proto::Function func = wukong::proto::jsonToFunction(request.body());
+            endpoint()->invoker()->shutdownInstance(func, std::move(response));
+            return;
+        }
+    }
+
+    SPDLOG_WARN(fmt::format("GlobalGatewayHandler received Unsupported request ： {}", uri));
+    response.send(Pistache::Http::Code::Bad_Request, fmt::format("Unsupported request : {}", uri));
+}
+
 InvokerEndpoint::InvokerEndpoint(
         const std::string &name,
         const std::shared_ptr<InvokerHandler> &handler) :
         Endpoint(name, handler) {
-
+    handler->associateEndpoint(this);
 }
 
 void InvokerEndpoint::start() {

@@ -117,6 +117,23 @@ else ()
     target_link_libraries(common_dependencies INTERFACE fmt)
 endif ()
 
+#----------------------- libuv ------------------------------------
+find_package(libuv QUIET)
+if (NOT libuv_FOUND)
+    message("Libuv not found. Downloading it from source...")
+    FetchContent_Declare(
+            Libuv
+            GIT_REPOSITORY https://github.com/libuv/libuv.git
+            GIT_TAG v1.44.1
+            GIT_SHALLOW true
+    )
+    set(DBUILD_TESTING OFF CACHE BOOL "")
+    set(LIBUV_BUILD_TESTS OFF CACHE BOOL "")
+    set(LIBUV_BUILD_BENCH OFF CACHE BOOL "")
+    FetchContent_MakeAvailable(Libuv)
+endif ()
+target_link_libraries(common_dependencies INTERFACE uv)
+
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE
         pthread

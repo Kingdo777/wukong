@@ -20,8 +20,23 @@
         "Logging set to trace but minimum log level set too high ({})", \
         SPDLOG_ACTIVE_LEVEL);
 
+#define WK_CHECK_WITH_ASSERT(condition, msg) \
+do{                                     \
+    bool check = (condition);           \
+    if(check) break;                    \
+    WK_CHECK(check,msg);                \
+    assert(false);                      \
+}while(false)
+
+#define WK_CHECK(condition, msg)        \
+do {                                    \
+    if(!(condition))SPDLOG_ERROR((msg));\
+} while(false)
+
 namespace wukong::utils {
     void initLog();
+
+    void printAllENV();
 }
 
 #endif //WUKONG_LOG_H

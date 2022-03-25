@@ -46,13 +46,21 @@ namespace wukong::utils {
             "REDIS_HOSTNAME",
             "localhost");
 
-    const std::string Config::invokerLBHost = getEnvVar(    /* NOLINT */
-            "INVOKER_LB_HOST",
+    const std::string Config::lbHost = getEnvVar(    /* NOLINT */
+            "LB_HOST",
             "localhost");
 
-    const int Config::invokerLBPort = getIntEnvVar( /* NOLINT */
-            "INVOKER_LB_PORT",
+    const int Config::lbPort = getIntEnvVar( /* NOLINT */
+            "LB_PORT",
             8080);
+
+    const std::string Config::invokerHost = getEnvVar(    /* NOLINT */
+            "LB_HOST",
+            "localhost");
+
+    const int Config::invokerPort = getIntEnvVar( /* NOLINT */
+            "LB_PORT",
+            8081);
 
     const std::string Config::invokerInitID = getEnvVar(    /* NOLINT */
             "INVOKER_INIT_ID",
@@ -65,6 +73,10 @@ namespace wukong::utils {
     const int Config::invokerMemory = getIntEnvVar( /* NOLINT */
             "INVOKER_MEMORY",
             64 * 1024); /// 64G
+
+    const uint64_t Config::pauseTimeout = getIntEnvVar( /* NOLINT */
+            "PAUSE_TIMEOUT",
+            INSTANCE_PAUSE_TIMEOUT); /// 1h
 
     void Config::print() {
         SPDLOG_INFO("--- Log ---");
@@ -85,11 +97,18 @@ namespace wukong::utils {
         SPDLOG_INFO("redisPort                      {}", redisPort);
         SPDLOG_INFO("redisHostname                  {}", redisHostName);
 
+        SPDLOG_INFO("--- LB ---");
+        SPDLOG_INFO("LBPort                         {}", lbPort);
+        SPDLOG_INFO("LBHost                         {}", lbHost);
+
         SPDLOG_INFO("--- Invoker ---");
-        SPDLOG_INFO("invokerLBHost                  {}", invokerLBHost);
-        SPDLOG_INFO("invokerLBPort                  {}", invokerLBPort);
+        SPDLOG_INFO("invokerPort                    {}", invokerPort);
+        SPDLOG_INFO("invokerHost                    {}", invokerHost);
         SPDLOG_INFO("invokerInitID                  {}", invokerInitID);
-        SPDLOG_INFO("invokerCPU                     {}", invokerCPU);
-        SPDLOG_INFO("invokerMemory                  {}", invokerMemory);
+        SPDLOG_INFO("invokerCPU                     {} cores", invokerCPU / 1000.0);
+        SPDLOG_INFO("invokerMemory                  {:.1f}MB", invokerMemory / 1024.0);
+        SPDLOG_INFO("pauseTimeout                   {}s", pauseTimeout);
+
+        SPDLOG_INFO("------------------------------------------------------------");
     }
 }

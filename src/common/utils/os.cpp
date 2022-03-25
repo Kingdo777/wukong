@@ -4,6 +4,8 @@
 
 #include <wukong/utils/os.h>
 #include <thread>
+#include <cassert>
+#include <wukong/utils/log.h>
 
 int wukong::utils::hardware_concurrency() { return (int) std::thread::hardware_concurrency(); }
 
@@ -77,5 +79,126 @@ namespace wukong::utils {
         // Cache and return the result
         ipMap[interface] = ipAddress;
         return ipAddress;
+    }
+
+    int nonblock_ioctl(int fd, int set) {
+        int r;
+
+        do
+            r = ::ioctl(fd, FIONBIO, &set);
+        while (r == -1 && errno == EINTR);
+
+        if (r)
+            return errno;
+
+        return 0;
+    }
+
+    int cloexec_ioctl(int fd, int set) {
+        int r;
+
+        do
+            r = ::ioctl(fd, set ? FIOCLEX : FIONCLEX);
+        while (r == -1 && errno == EINTR);
+
+        if (r)
+            return errno;
+
+        return 0;
+    }
+
+    int nonblock_fcntl(int fd, int set) {
+        int flags;
+        int r;
+
+        do
+            r = ::fcntl(fd, F_GETFL);
+        while (r == -1 && errno == EINTR);
+
+        if (r == -1)
+            return errno;
+
+        /* Bail out now if already set/clear. */
+        if (!!(r & O_NONBLOCK) == !!set)
+            return 0;
+
+        if (set)
+            flags = r | O_NONBLOCK;
+        else
+            flags = r & ~O_NONBLOCK;
+
+        do
+            r = ::fcntl(fd, F_SETFL, flags);
+        while (r == -1 && errno == EINTR);
+
+        if (r)
+            return errno;
+
+        return 0;
+    }
+
+    int cloexec_fcntl(int fd, int set) {
+        int flags;
+        int r;
+
+        do
+            r = ::fcntl(fd, F_GETFD);
+        while (r == -1 && errno == EINTR);
+
+        if (r == -1)
+            return errno;
+
+        /* Bail out now if already set/clear. */
+        if (!!(r & FD_CLOEXEC) == !!set)
+            return 0;
+
+        if (set)
+            flags = r | FD_CLOEXEC;
+        else
+            flags = r & ~FD_CLOEXEC;
+
+        do
+            r = ::fcntl(fd, F_SETFD, flags);
+        while (r == -1 && errno == EINTR);
+
+        if (r)
+            return errno;
+
+        return 0;
+    }
+
+    int socket_pair(int *fds) {
+        if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds))
+            return errno;
+        return 0;
+    }
+
+    int make_pipe(int *fds, int flags) {
+        if (pipe2(fds, flags | O_CLOEXEC))
+            return errno;
+        return 0;
+
+    }
+
+    void write_int(int fd, int val) {
+        ssize_t n;
+        do
+            n = ::write(fd, &val, sizeof(val));
+        while (n == -1 && errno == EINTR);
+        if (n == -1 && errno == EPIPE)
+            return; /* parent process has quit */
+        WK_CHECK(n == sizeof(val), "write_int failed");
+    }
+
+    int read_int(int fd) {
+        int val;
+        ssize_t n;
+        do
+            n = ::read(fd, &val, sizeof(val));
+        while (n == -1 && errno == EINTR);
+        if (n == -1 && errno == EPIPE)
+            return 0; /* parent process has quit */
+        WK_CHECK(n == sizeof(val), "read_int failed");
+        return val;
     }
 }

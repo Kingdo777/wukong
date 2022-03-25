@@ -10,6 +10,7 @@ Invoker::Invoker() {
     invokerProto.set_port(wukong::utils::Config::EndpointPort());
     invokerProto.set_cpu(wukong::utils::Config::InvokerCPU());
     invokerProto.set_memory(wukong::utils::Config::InvokerMemory());
+    endpoint.associateEndpoint(this);
 }
 
 void Invoker::start() {
@@ -17,14 +18,11 @@ void Invoker::start() {
         SPDLOG_WARN("Invoker is Started");
         return;
     }
-    auto opts = Pistache::Http::Client::options().
-            threads(wukong::utils::Config::ClientNumThreads()).
-            maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
-    client.start(opts);
-    auto result = client.register2LB(toInvokerJson());
+    InvokerClientServer::start();
+    auto result = register2LB(toInvokerJson());
     if (!result.first) {
         SPDLOG_ERROR("Connect LB Failed : {}", result.second);
-        client.shutdown();
+        InvokerClientServer::shutdown();
         exit(0);
     }
     SPDLOG_INFO("Invoker Register Success : {}", result.second);
@@ -40,6 +38,36 @@ void Invoker::stop() {
         return;
     }
     endpoint.stop();
-    client.shutdown();
+    InvokerClientServer::shutdown();
     status = InvokerStatus::Stopped;
+}
+
+std::pair<bool, std::string> Invoker::register2LB(const std::string &invokerJson) const {
+    bool success = false;
+    std::string msg = "Invoker Registered";
+    if (!registered) {
+        std::string LBHost = wukong::utils::Config::LBHost();
+        int LBPort = wukong::utils::Config::LBPort();
+        std::string uri = LBHost + ":" + std::to_string(LBPort) + "/invoker/register";
+        auto rsp = InvokerClientServer::client().post(uri).body(invokerJson).timeout(std::chrono::seconds(5)).send();
+        while (rsp.isPending());
+        rsp.then(
+                [&](Pistache::Http::Response response) {
+                    if (response.code() == Pistache::Http::Code::Ok) {
+                        msg = response.body();
+                        success = true;
+                    } else {
+                        msg = "Status Code Wrong, " + response.body();
+                    }
+                },
+                [&](const std::exception_ptr &exc) {
+                    try {
+                        std::rethrow_exception(exc);
+                    }
+                    catch (const std::exception &e) {
+                        msg = e.what();
+                    }
+                });
+    }
+    return std::make_pair(success, msg);
 }

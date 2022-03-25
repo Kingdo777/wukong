@@ -6,7 +6,8 @@
 #include <wukong/utils/log.h>
 
 namespace wukong::endpoint {
-    Endpoint::Endpoint(const std::string &name, const std::shared_ptr<Pistache::Http::Handler> &handler) :
+    Endpoint::Endpoint(const std::string &name, const std::shared_ptr<Pistache::Http::Handler> &handler, int port) :
+            endpointPort(port),
             endpoint(Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(endpointPort))) {
         if (handler != nullptr)
             endpointHandler = handler;
@@ -14,11 +15,6 @@ namespace wukong::endpoint {
     }
 
     void Endpoint::start() {
-        SPDLOG_INFO("Starting {} endpoint on 0.0.0.0:{}, with {} threads",
-                    endpointName,
-                    endpointPort,
-                    endpointThreadCount);
-
         // Configure endpoint
         auto opts = Pistache::Http::Endpoint::options()
                 .threads(endpointThreadCount)
@@ -32,6 +28,12 @@ namespace wukong::endpoint {
         // Configure and start endpoint
         endpoint.setHandler(endpointHandler);
         endpoint.serveThreaded();
+        if (0 == endpointPort)
+            endpointPort = endpoint.getPort();
+        SPDLOG_INFO("Startup {} endpoint on 0.0.0.0:{}, with {} threads",
+                    endpointName,
+                    endpointPort,
+                    endpointThreadCount);
     }
 
     void Endpoint::stop() {

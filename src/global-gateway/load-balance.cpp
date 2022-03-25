@@ -14,6 +14,7 @@
 
 void LoadBalanceClientHandler::registerPoller(Pistache::Polling::Epoll &poller) {
     functionCallQueue.bind(poller);
+    startupInstanceQueue.bind(poller);
     Base::registerPoller(poller);
 }
 
@@ -21,6 +22,8 @@ void LoadBalanceClientHandler::onReady(const Pistache::Aio::FdSet &fds) {
     for (auto fd: fds) {
         if (fd.getTag() == functionCallQueue.tag()) {
             handleFunctionCallQueue();
+        } else if (fd.getTag() == startupInstanceQueue.tag()) {
+            handleStartupInstanceQueue();
         }
     }
     Base::onReady(fds);
@@ -28,24 +31,36 @@ void LoadBalanceClientHandler::onReady(const Pistache::Aio::FdSet &fds) {
 
 void LoadBalanceClientHandler::handleFunctionCallQueue() {
     for (;;) {
-        auto function = functionCallQueue.popSafe();
-        if (!function)
+        auto entry = functionCallQueue.popSafe();
+        if (!entry)
             break;
-        asyncCallFunction(std::move(*function));
+        asyncCallFunction(std::move(*entry));
+    }
+}
+
+void LoadBalanceClientHandler::handleStartupInstanceQueue() {
+    for (;;) {
+        auto entry = startupInstanceQueue.popSafe();
+        if (!entry)
+            break;
+        asyncStartupInstance(std::move(*entry));
     }
 }
 
 void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &&entry) {
-    auto res = post("127.0.0.1:9080", "");
+    auto uri = fmt::format("http://{}:{}/function/call/{}", entry.instanceHost, entry.instancePort, entry.funcname);
+    auto res = post(uri, entry.data);
     std::string funcEntryIndex = wukong::utils::randomString(15);
+    wukong::utils::UniqueLock lock(functionCallMapMutex);
     functionCallMap.insert(std::make_pair(funcEntryIndex, std::move(entry)));
+    lock.unlock();  /// 必须要在这里解锁，不然responseFunctionCall如果被同一线程执行，会导致死锁，虽然这种可能性几乎不存在
     res.then(
-            [=, this](Pistache::Http::Response response) {
+            [funcEntryIndex, this](Pistache::Http::Response response) {
                 auto code = response.code();
                 std::string result = response.body();
                 responseFunctionCall(code, result, funcEntryIndex);
             },
-            [=, this](std::exception_ptr exc) {
+            [funcEntryIndex, this](std::exception_ptr exc) {
                 try {
                     std::rethrow_exception(std::move(exc));
                 }
@@ -57,13 +72,45 @@ void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::Funct
             });
 }
 
-void LoadBalanceClientHandler::callFunction(Pistache::Http::ResponseWriter response) {
-    FunctionCallEntry functionCallEntry(std::move(response));
-    functionCallQueue.push(std::move(functionCallEntry));
+void LoadBalanceClientHandler::asyncStartupInstance(LoadBalanceClientHandler::StartupInstanceEntry &&entry) {
+    auto uri = fmt::format("http://{}:{}/function/startup", entry.invokerHost, entry.invokerPort);
+    auto res = post(uri, entry.data);
+    std::string entryIndex = wukong::utils::randomString(15);
+    wukong::utils::UniqueLock lock(startupInstanceMapMutex);
+    startupInstanceMap.insert(std::make_pair(entryIndex, std::move(entry)));
+    lock.unlock();  /// 必须要在这里解锁，原因同上
+    res.then(
+            [entryIndex, this](Pistache::Http::Response response) {
+                auto code = response.code();
+                std::string result = response.body();
+                responseStartupInstance(code, result, entryIndex);
+            },
+            [entryIndex, this](std::exception_ptr exc) {
+                try {
+                    std::rethrow_exception(std::move(exc));
+                }
+                catch (const std::exception &e) {
+                    auto code = Pistache::Http::Code::Internal_Server_Error;
+                    std::string result = e.what();
+                    responseStartupInstance(code, result, entryIndex);
+                }
+            });
+}
+
+
+void LoadBalanceClientHandler::callFunction(LoadBalanceClientHandler::FunctionCallEntry entry) {
+    // TODO in right thread
+    functionCallQueue.push(std::move(entry));
+}
+
+void LoadBalanceClientHandler::startupInstance(LoadBalanceClientHandler::StartupInstanceEntry entry) {
+    // TODO in right thread
+    startupInstanceQueue.push(std::move(entry));
 }
 
 void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, std::string &result,
                                                     const std::string &funcEntryIndex) {
+    wukong::utils::UniqueLock lock(functionCallMapMutex);
     auto iter = functionCallMap.find(funcEntryIndex);
     if (iter == functionCallMap.end()) {
         SPDLOG_ERROR(fmt::format("functionCall not Find in functionCallMap, with funcEntryIndex `{}`",
@@ -72,6 +119,37 @@ void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, s
     }
     iter->second.response.send(code, result);
     functionCallMap.erase(iter);
+}
+
+void LoadBalanceClientHandler::responseStartupInstance(Pistache::Http::Code code,
+                                                       std::string &result,
+                                                       const std::string &startupInstanceEntryIndex) {
+    wukong::utils::UniqueLock lock(startupInstanceMapMutex);
+    if (!startupInstanceMap.contains(startupInstanceEntryIndex)) {
+        SPDLOG_ERROR(fmt::format("functionCall not Find in functionCallMap, with funcEntryIndex `{}`",
+                                 startupInstanceEntryIndex));
+        return;
+    }
+    auto &entry = startupInstanceMap.at(startupInstanceEntryIndex);
+    if (code == Pistache::Http::Code::Ok) {
+        /// 创建Instance成功
+        const auto &replyStartupIns = wukong::proto::jsonToReplyStartupInstance(result);
+        entry.instance.set_host(replyStartupIns.host());
+        entry.instance.set_port(replyStartupIns.port());
+        lb()->addInstance(LoadBalance::Instance::key(entry.instance.user(),
+                                                     entry.instance.application(),
+                                                     entry.instance.invokerid()),
+                          entry.instance);
+        auto &funcCallEntry = entry.funcCallEntry;
+        funcCallEntry.instancePort = replyStartupIns.port();
+        funcCallEntry.instanceHost = replyStartupIns.host();
+        callFunction(std::move(funcCallEntry));
+        startupInstanceMap.erase(startupInstanceEntryIndex);
+        return;
+    }
+    auto msg = fmt::format("Create Instance Failed : ", result);
+    entry.funcCallEntry.response.send(code, msg);
+    startupInstanceMap.erase(startupInstanceEntryIndex);
 }
 
 void LoadBalance::start() {
@@ -83,7 +161,7 @@ void LoadBalance::start() {
     auto opts = Pistache::Http::Client::options().
             threads(wukong::utils::Config::ClientNumThreads()).
             maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
-    cs.setHandler(std::make_shared<LoadBalanceClientHandler>(&cs));
+    cs.setHandler(std::make_shared<LoadBalanceClientHandler>(&cs, this));
     SPDLOG_INFO("Starting LoadBalance with {} threads", wukong::utils::Config::ClientNumThreads());
     cs.start(opts);
     /// 加载 Invoker、user、Application、Function信息
@@ -102,7 +180,76 @@ void LoadBalance::stop() {
 }
 
 void LoadBalance::dispatch(wukong::proto::Message &&msg, Pistache::Http::ResponseWriter response) {
-    pickOneHandler()->callFunction(std::move(response));
+    wukong::utils::ReadLock uaf_lock(uaf_mutex);
+    wukong::utils::ReadLock invokers_lock(invokers_mutex);
+    wukong::utils::ReadLock instances_lock(instances_share_mutex);
+    /// A. 检索当前是否有可用的Invoker
+    if (invokers.empty()) {
+        response.send(Pistache::Http::Code::Internal_Server_Error, "No registered Invokers");
+        return;
+    }
+    /// B. 根据msg，确定Function的信息
+    auto func_index_set = functions.getFunction(msg.user(), msg.application(), msg.function());
+    if (func_index_set.empty()) {
+        response.send(Pistache::Http::Code::Internal_Server_Error,
+                      fmt::format("can't find function, user : {}, app : {}, func : {}",
+                                  msg.user(), msg.application(), msg.function()));
+        return;
+    }
+    WK_CHECK_WITH_ASSERT(func_index_set.size() == 1, "FunctionMete Get unknown errors");
+    auto func_index = *func_index_set.begin();
+    wukong::proto::Function func = functions.functions.at(func_index);
+    LoadBalanceClientHandler::FunctionCallEntry functionCallEntry(
+            "",
+            "",
+            msg.function(),
+            wukong::proto::messageToJson(msg),
+            std::move(response)
+    );
+    ///  当前实现
+    /// C. 随机挑选一个Invoker，判断其是否包含对应的Instance
+    size_t invoker_index_random = msg.id() % invokers.size();
+    auto iter = invokers.invokers.begin();
+    for (size_t i = 0; i < invoker_index_random; ++i) iter++;
+    const auto &ink = (*iter).second;
+    /// D. 若不包含对应实例，则通知该Invoker，启动并初始化该实例
+    std::string instance_key = LoadBalance::Instance::key(msg.user(),
+                                                          msg.application(),
+                                                          ink.invokerid());
+    bool instance_present = instances.contains(instance_key);
+    if (!instance_present) {
+        /// D1. 启动成功后，派发请求
+        /// D2. 启动失败，则返回错误内容给用户
+        wukong::proto::Instance instance;
+        instance.set_user(func.user());
+        instance.set_application(func.application());
+        instance.set_invokerid(ink.invokerid());
+        LoadBalanceClientHandler::StartupInstanceEntry startupInstanceEntry(ink.ip(),
+                                                                            std::to_string(ink.port()),
+                                                                            messageToJson(func),
+                                                                            std::move(instance),
+                                                                            std::move(functionCallEntry));
+        pickOneHandler()->startupInstance(std::move(startupInstanceEntry));
+    }
+        /// E. 若包含，则直接将请求派发至此实例
+    else {
+        auto instance = instances.get(instance_key);
+        functionCallEntry.instanceHost = instance.host();
+        functionCallEntry.instancePort = instance.port();
+        pickOneHandler()->callFunction(std::move(functionCallEntry));
+    }
+    /// 未来优化
+    /// C. 检索所有包含改Function的Invoker
+    ///     c1. 若某个Invoker符合期望，则将请求下发至此invoker所管理的Instance上
+    /// D. 若没有任何一个Invoker符合，则检查当前是否存在不包含此Function的实例，并且资源合适的实例
+    ///     d1. 若找到，则向该Invoker发送启动实例的请求
+    /// E. 若没有找到资源合适的Invoker
+    ///    e.1 若当前存在包含所需Invoker，则强制向其发送请求，并报告拥堵
+    ///    e.2 若当前，实在没有可用资源创建一个实例，那么将向用户返回错误（因此我们无法强制启动实例）
+    //    std::string instanceKey = fmt::format("{}#{}", app_index, invokerID);
+//    Instance instance(invokerID, func_index, "", "", func.concurrency());
+//    instances.emplace(instanceKey, instance);
+//    pickOneHandler()->callFunction(entry);
 }
 
 std::shared_ptr<LoadBalanceClientHandler> LoadBalance::pickOneHandler() {
@@ -117,6 +264,7 @@ void LoadBalance::handleInvokerRegister(const std::string &host,
     invoker.set_registertime(wukong::utils::getMillsTimestamp());
     invoker.set_ip(host);
 
+    wukong::utils::WriteLock lock(invokers_mutex);
     auto check_result = invokers.invokerCheck(invoker);
 
     if (check_result.first) {
@@ -132,7 +280,7 @@ void LoadBalance::handleInvokerRegister(const std::string &host,
 void LoadBalance::handleFuncRegister(wukong::proto::Function &function,
                                      const std::string &code,
                                      Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = functions.registerFuncCheck(function, code);
     if (check_result.first) {
         functions.registerFunction(function, code);
@@ -148,7 +296,7 @@ void LoadBalance::handleFuncDelete(const std::string &username,
                                    const std::string &appname,
                                    const std::string &funcname,
                                    Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = functions.deleteFuncCheck(username, appname, funcname);
     if (check_result.first) {
         /// 这里不能用引用，因为我们要删除function，如果用了引用，那么function被删除之后，就会内存泄露
@@ -163,7 +311,7 @@ void LoadBalance::handleFuncDelete(const std::string &username,
 }
 
 void LoadBalance::handleUserRegister(const wukong::proto::User &user, Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = users.registerUserCheck(user);
     if (check_result.first) {
         users.registerUser(user);
@@ -176,7 +324,7 @@ void LoadBalance::handleUserRegister(const wukong::proto::User &user, Pistache::
 }
 
 void LoadBalance::handleUserDelete(const wukong::proto::User &user, Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = users.deleteUserCheck(user);
     if (check_result.first) {
         users.deleteUser(user);
@@ -190,7 +338,7 @@ void LoadBalance::handleUserDelete(const wukong::proto::User &user, Pistache::Ht
 
 void
 LoadBalance::handleAppCreate(const wukong::proto::Application &application, Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = applications.checkCreateApplication(application);
     if (check_result.first) {
         applications.createApplication(application);
@@ -204,7 +352,7 @@ LoadBalance::handleAppCreate(const wukong::proto::Application &application, Pist
 
 void
 LoadBalance::handleAppDelete(const wukong::proto::Application &application, Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = applications.checkDeleteApplication(application);
     if (check_result.first) {
         applications.deleteApplication(application);
@@ -217,7 +365,8 @@ LoadBalance::handleAppDelete(const wukong::proto::Application &application, Pist
 }
 
 void LoadBalance::load() {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::WriteLock lock(uaf_mutex);
+    wukong::utils::WriteLock invoker_lock(invokers_mutex);
 //    wukong::utils::UniqueLock user(users.mutex);
 //    wukong::utils::UniqueLock app(applications.mutex);
 //    wukong::utils::UniqueLock func(functions.mutex);
@@ -229,7 +378,7 @@ void LoadBalance::load() {
 
 void LoadBalance::handleAppInfo(const std::string &username, const std::string &appname,
                                 Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::ReadLock lock(uaf_mutex);
     if (!username.empty() && !users.userSet.contains(username)) {
         response.send(Pistache::Http::Code::Bad_Request, fmt::format("{} is not exists", username));
         return;
@@ -239,7 +388,7 @@ void LoadBalance::handleAppInfo(const std::string &username, const std::string &
 }
 
 void LoadBalance::handleUserInfo(const std::string &username, Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::ReadLock lock(uaf_mutex);
     auto usersInfo = users.getUserInfo();
     response.send(Pistache::Http::Code::Ok, usersInfo);
 }
@@ -248,7 +397,7 @@ void LoadBalance::handleFuncInfo(const std::string &username,
                                  const std::string &appname,
                                  const std::string &funcname,
                                  Pistache::Http::ResponseWriter response) {
-    wukong::utils::UniqueLock lock(uaf_mutex);
+    wukong::utils::ReadLock lock(uaf_mutex);
     response.send(Pistache::Http::Code::Ok, functions.getFunctionInfo(username, appname, funcname));
 }
 

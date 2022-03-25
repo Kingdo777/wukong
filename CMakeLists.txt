@@ -16,6 +16,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CMAKE_CXX_STANDARD 20)
 
 option(ENABLE_TRACE "Statistics execution time" ON)
+option(USE_FIRECRACKER_PROXY "use firecracker" OFF)
+option(USE_DOCKER_PROXY "use docker" OFF)
+option(USE_PROCESS_PROXY "use process" ON)
 
 # 设置自定义的include目录
 set(WUKONG_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
@@ -33,10 +36,25 @@ if (${ENABLE_TRACE})
     add_definitions(-DENABLE_TRACE)
 endif ()
 
+# 配置使用那种Instance Proxy，数字取自圆周率
+add_definitions(-DFIRECRACKER=314156)
+add_definitions(-DDOCKER=265358)
+add_definitions(-DPROCESS=979324)
+if (${USE_FIRECRACKER_PROXY})
+    message(STATUS "Using FIRECRACKER Instance Proxy")
+    add_definitions(-DINSTANCE_PROXY=FIRECRACKER)
+elseif (${USE_DOCKER_PROXY})
+    message(STATUS "Using DOCKER Instance Proxy")
+    add_definitions(-DINSTANCE_PROXY=DOCKER)
+else ()
+    message(STATUS "Using PROCESS Instance Proxy")
+    add_definitions(-DINSTANCE_PROXY=PROCESS)
+endif ()
+
 
 function(wukong_lib lib_name)
     # 获取源文件
-    file(GLOB SOURCES_FILE *.cpp *.cc)
+    file(GLOB SOURCES_FILE */*.cpp *.cpp *.cc)
     file(GLOB HEADERS_FILE ${WUKONG_INCLUDE_DIR}/wukong/${lib_name}/*.h)
     # 生成库文件, 注意, 如果自定义各个lib之间存在引用关系, 需要手动添加
     add_library(${lib_name} ${SOURCES_FILE} ${HEADERS_FILE})
@@ -54,6 +72,8 @@ endfunction()
 add_subdirectory(src/common)
 add_subdirectory(src/global-gateway)
 add_subdirectory(src/invoker)
+add_subdirectory(src/instance)
+
 
 add_subdirectory(tool)
 add_subdirectory(function/cpp/kingdo/test/hello)
