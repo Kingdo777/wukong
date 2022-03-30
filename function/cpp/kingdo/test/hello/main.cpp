@@ -4,12 +4,10 @@
 
 #include <cstdio>
 #include <string>
+#include <faas/function-interface.h>
 
-
-std::string faas_ping() {
-    return "pong";
-}
-
-void faas_main() {
-    printf("hello wukong");
+void faas_main(FaasHandle *handle) {
+    auto input = faas_getInput(handle);
+    auto result = fmt::format("Hello , {}", input);
+    faas_setOutput(handle, result);
 }

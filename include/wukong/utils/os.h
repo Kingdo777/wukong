@@ -6,6 +6,7 @@
 #define WUKONG_OS_H
 
 #include <wukong/utils/string-tool.h>
+#include <wukong/utils/log.h>
 
 #include <thread>
 #include <arpa/inet.h>
@@ -49,9 +50,29 @@ namespace wukong::utils {
 
     int make_pipe(int fds[2], int flags);
 
-    void write_int(int fd, int val);
+    template<typename T>
+    void write_2_fd(int fd, T val) {
+        ssize_t n;
+        do
+            n = ::write(fd, &val, sizeof(T));
+        while (n == -1 && errno == EINTR);
+        if (n == -1 && errno == EPIPE)
+            SPDLOG_ERROR("write_2_fd : errno == EPIPE"); /* parent process has quit */
+        WK_CHECK(n == sizeof(T), "write_2_fd failed");
+    }
 
-    int read_int(int fd);
-
+    template<typename T>
+    ssize_t read_from_fd(int fd, T *val) {
+        // TODO 应该结合epoll实现timeout机制
+        ssize_t n;
+        do
+            n = ::read(fd, val, sizeof(T));
+        while (n == -1 && errno == EINTR);
+        if (n == -1 && errno == EPIPE) {
+            SPDLOG_ERROR("read_from_fd : errno == EPIPE"); /* parent process has quit */
+        }
+        WK_CHECK(n == sizeof(T), "read_from_fd failed");
+        return n;
+    }
 }
 #endif //WUKONG_OS_H

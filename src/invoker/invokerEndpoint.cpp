@@ -53,17 +53,17 @@ void InvokerHandler::handlePostReq(const Pistache::Http::Request &request, Pista
         response.send(Pistache::Http::Code::Ok, "PONG");
         return;
     }
-    if (uri.starts_with("/function")) {
-        if (uri == "/function/startup") {
+    if (uri.starts_with("/instance")) {
+        if (uri == "/instance/startup") {
             SPDLOG_DEBUG("GlobalGatewayHandler received /function/startup request");
-            wukong::proto::Function func = wukong::proto::jsonToFunction(request.body());
-            endpoint()->invoker()->startupInstance(func, std::move(response));
+            wukong::proto::Application app = wukong::proto::jsonToApplication(request.body());
+            endpoint()->invoker()->startupInstance(app, std::move(response));
             return;
         }
-        if (uri == "/function/shutdown") {
+        if (uri == "/instance/shutdown") {
             SPDLOG_DEBUG("GlobalGatewayHandler received /function/shutdown request");
-            wukong::proto::Function func = wukong::proto::jsonToFunction(request.body());
-            endpoint()->invoker()->shutdownInstance(func, std::move(response));
+            wukong::proto::Application app = wukong::proto::jsonToApplication(request.body());
+            endpoint()->invoker()->shutdownInstance(app, std::move(response));
             return;
         }
     }

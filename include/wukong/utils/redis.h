@@ -5,6 +5,7 @@
 #ifndef WUKONG_REDIS_H
 #define WUKONG_REDIS_H
 
+#include <boost/filesystem.hpp>
 #include <wukong/utils/log.h>
 #include <wukong/utils/string-tool.h>
 #include <wukong/utils/radom.h>
@@ -51,6 +52,8 @@ namespace wukong::utils {
         ~Redis();
 
         std::string get(const std::string &key);
+
+        void get_to_file(const std::string &key, const boost::filesystem::path &file_path);
 
         void set(const std::string &key, const std::string &value);
 

@@ -127,12 +127,15 @@ namespace wukong::utils {
             return stdio.size() - 1;
         }
 
-        int getPIPE_FD(uint64_t index) {
+        [[nodiscard]] int getPIPE_FD(uint64_t index) const {
             WK_CHECK_WITH_ASSERT(stdio.size() > index, "index is out of range");
             WK_CHECK_STATE(Running);
             return stdio[index].fd;
         }
 
+        [[nodiscard]] bool isRunning() const {
+            return state == Running;
+        }
 
         virtual int spawn() = 0;
 

@@ -6,5 +6,6 @@ target_link_libraries(instance-local-gateway
         wukong::client-server
         wukong::utils
         wukong::proto
+        wukong::common_dependencies
         )
 add_dependencies(instance-local-gateway wukong::proto)

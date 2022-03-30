@@ -16,6 +16,7 @@ namespace wukong::proto {
         d.AddMember("id", msg.id(), a);
         d.AddMember("type", msg.type(), a);
 
+        d.AddMember("user", rapidjson::Value(msg.user().c_str(), msg.user().size(), a).Move(), a);
         d.AddMember("application", rapidjson::Value(msg.application().c_str(), msg.application().size(), a).Move(), a);
         d.AddMember("function", rapidjson::Value(msg.function().c_str(), msg.function().size(), a).Move(), a);
 
@@ -47,7 +48,7 @@ namespace wukong::proto {
 
 
     wukong::proto::Message jsonToMessage(const std::string &jsonIn) {
-        TIMING_START(jsonDecode)
+//        TIMING_START(jsonDecode)
 
         rapidjson::MemoryStream ms(jsonIn.c_str(), jsonIn.size());
         rapidjson::Document d;
@@ -55,7 +56,9 @@ namespace wukong::proto {
 
         wukong::proto::Message msg;
 
-        msg.set_id(utils::uuid());
+        msg.set_id(utils::getUInt64FromJson(d, "id", 0));
+        if (msg.id() == 0)
+            msg.set_id(utils::uuid());
         int msgType = utils::getIntFromJson(d, "type",
                                             wukong::proto::Message::MessageType::Message_MessageType_FUNCTION);
         if (!wukong::proto::Message::MessageType_IsValid(msgType)) {
@@ -64,6 +67,7 @@ namespace wukong::proto {
         }
         msg.set_type(static_cast<wukong::proto::Message::MessageType>(msgType));
 
+        msg.set_user(utils::getStringFromJson(d, "user", ""));
         msg.set_application(utils::getStringFromJson(d, "application", ""));
         msg.set_function(utils::getStringFromJson(d, "function", ""));
 
@@ -72,12 +76,17 @@ namespace wukong::proto {
 
         msg.set_inputdata(utils::getStringFromJson(d, "input_data", ""));
         msg.set_outputdata(utils::getStringFromJson(d, "output_data", ""));
-        msg.set_resultkey(utils::getStringFromJson(d, "result_key", ""));
+        msg.set_resultkey(utils::getStringFromJson(d, "result_key",
+                                                   fmt::format("{}#{}#{}-{}",
+                                                               msg.user(),
+                                                               msg.application(),
+                                                               msg.function(),
+                                                               msg.id())));
 
         msg.set_timestamp(utils::getInt64FromJson(d, "timestamp", 0));
         msg.set_finishtimestamp(utils::getInt64FromJson(d, "finished", 0));
 
-        TIMING_END(jsonDecode)
+//        TIMING_END(jsonDecode)
 
         return msg;
     }

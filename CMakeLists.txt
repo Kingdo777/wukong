@@ -60,8 +60,7 @@ function(wukong_lib lib_name)
     add_library(${lib_name} ${SOURCES_FILE} ${HEADERS_FILE})
     # 在这里如果不用PUBLIC, 那么使用这些库的可执行程序, 将无法引用第三方库的头文件. 因为我们自己的库的头文件中会引用这些头文件,
     # 这样当其他可执行程序如果引用了我们的自己的库的头文件, 就会提示找不到第三方库的头文件
-    target_include_directories(${lib_name} PUBLIC ${WUKONG_INCLUDE_DIR})
-    target_link_libraries(${lib_name} PUBLIC wukong::common_dependencies)
+    target_link_libraries(${lib_name} PRIVATE wukong::common_dependencies)
     add_library(wukong::${lib_name} ALIAS ${lib_name})
 
     # Ensure library generates readable stack traces
@@ -73,6 +72,7 @@ add_subdirectory(src/common)
 add_subdirectory(src/global-gateway)
 add_subdirectory(src/invoker)
 add_subdirectory(src/instance)
+add_subdirectory(src/faas)
 
 
 add_subdirectory(tool)

@@ -1,6 +1,5 @@
 #include <wukong/utils/timing.h>
 #include <wukong/utils/signal-tool.h>
-#include <wukong/proto/proto.h>
 #include "endpoint.h"
 #include "load-balance.h"
 

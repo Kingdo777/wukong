@@ -6,6 +6,8 @@
 #define WUKONG_PROCESS_INSTANCE_PROXY_H
 
 #include <wukong/utils/process/DefaultSubProcess.h>
+#include <boost/filesystem.hpp>
+#include <boost/dll.hpp>
 #include <wukong/utils/os.h>
 #include "../InstanceProxy.h"
 
@@ -15,9 +17,9 @@ public:
 
     void test() {
         InvokerClientServer::start();
-        auto res = doStart({0}, "");
+        auto res = doStart("kingdo", "test");
         if (res.first) {
-            res = doInit(false, true, "key0");
+            res = doInit("kingdo", "test");
             if (res.first) {
                 SPDLOG_INFO("!!!!!!!!!!!!!!!!!!!!!!!!");
                 wait(nullptr);
@@ -36,9 +38,9 @@ public:
     };
 
 private:
-    std::pair<bool, std::string> doStart(FuncResource fr, const std::string &funcname) override;
+    std::pair<bool, std::string> doStart(const std::string &username, const std::string &appname) override;
 
-    std::pair<bool, std::string> doInit(bool isPython, bool localStorage, const std::string &storageKey) override;
+    std::pair<bool, std::string> doInit(const std::string &username, const std::string &appname) override;
 
     std::pair<bool, std::string> doPause() override {
         return {};
@@ -51,7 +53,7 @@ private:
     std::pair<bool, std::string> doPing() override;
 
 private:
-    std::string exec_path;
+    boost::filesystem::path exec_path;
     wukong::utils::DefaultSubProcess process;
     int instancePort = 0;
     std::string instanceHost = "localhost";

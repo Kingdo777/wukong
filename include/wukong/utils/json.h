@@ -22,6 +22,8 @@ namespace wukong::utils {
 
     int64_t getInt64FromJson(rapidjson::Document &doc, const std::string &key, int dflt);
 
+    uint64_t getUInt64FromJson(rapidjson::Document &doc, const std::string &key, int dflt);
+
     std::string getStringFromJson(rapidjson::Document &doc,
                                   const std::string &key,
                                   const std::string &dflt);

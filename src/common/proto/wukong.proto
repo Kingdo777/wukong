@@ -19,8 +19,8 @@ message Message {
   bytes outputData = 8;
   string resultKey = 9;
 
-  int64 timestamp = 10;
-  int64 finishTimestamp = 11;
+  uint64 timestamp = 10;
+  uint64 finishTimestamp = 11;
 
 }
 

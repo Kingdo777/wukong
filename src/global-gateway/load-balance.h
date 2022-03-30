@@ -39,12 +39,16 @@ public:
         explicit FunctionCallEntry(std::string host_,
                                    std::string port_,
                                    std::string uri_,
+                                   bool is_async_,
+                                   std::string resultKey_,
                                    std::string data_,
                                    Pistache::Http::ResponseWriter response_) :
                 instanceHost(std::move(host_)),
                 instancePort(std::move(port_)),
                 funcname(std::move(uri_)),
                 data(std::move(data_)),
+                resultKey(std::move(resultKey_)),
+                is_async(is_async_),
                 response(std::move(response_)) {}
 
         /// curl -X POST -d "data" http://ip:port/uri
@@ -52,8 +56,31 @@ public:
         std::string instancePort;
         std::string funcname;
         std::string data;   /// proto::Message的json序列
+        std::string resultKey;
+        bool is_async;
 
         Pistache::Http::ResponseWriter response;
+    };
+
+    enum ResponseType {
+        FunctionCall,
+        StartupInstance
+    };
+
+    struct ResponseEntry {
+        ResponseEntry(Pistache::Http::Code code_,
+                      std::string result_,
+                      std::string index_,
+                      ResponseType type_) :
+                code(code_),
+                result(std::move(result_)),
+                index(std::move(index_)),
+                type(type_) {}
+
+        Pistache::Http::Code code;
+        std::string result;
+        std::string index;
+        ResponseType type;
     };
 
     struct StartupInstanceEntry {
@@ -70,29 +97,20 @@ public:
 
         std::string invokerHost;
         std::string invokerPort;
-        std::string data;   /// proto::Function的json序列
+        std::string data;   /// proto::Application的json序列
 
         wukong::proto::Instance instance;
         FunctionCallEntry funcCallEntry;
     };
 
-    void callFunction( FunctionCallEntry entry);
+
+    void callFunction(FunctionCallEntry entry);
 
     void startupInstance(StartupInstanceEntry entry);
 
     LoadBalance *lb() {
         return this->loadBalance;
     }
-
-private:
-
-    void handleFunctionCallQueue();
-
-    void handleStartupInstanceQueue();
-
-    void asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &&entry);
-
-    void asyncStartupInstance(LoadBalanceClientHandler::StartupInstanceEntry &&entry);
 
 private:
     Pistache::PollableQueue<StartupInstanceEntry> startupInstanceQueue;
@@ -103,10 +121,26 @@ private:
     std::map<std::string, FunctionCallEntry> functionCallMap;
     std::mutex functionCallMapMutex;
 
-    void responseFunctionCall(Pistache::Http::Code code, std::string &result, const std::string &funcEntryIndex);
+    Pistache::PollableQueue<ResponseEntry> responseQueue;
 
-    void responseStartupInstance(Pistache::Http::Code code, std::string &result,
+    void handleFunctionCallQueue();
+
+    void asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &&entry);
+
+    void handleStartupInstanceQueue();
+
+    void asyncStartupInstance(LoadBalanceClientHandler::StartupInstanceEntry &&entry);
+
+    void handleResponseQueue();
+
+
+    void responseStartupInstance(Pistache::Http::Code code, const std::string &result,
+                                 LoadBalanceClientHandler *h,
                                  const std::string &startupInstanceEntryIndex);
+
+    void responseFunctionCall(Pistache::Http::Code code, const std::string &result,
+                              LoadBalanceClientHandler *h,
+                              const std::string &funcEntryIndex);
 
     LoadBalance *loadBalance = nullptr;
 };
@@ -180,6 +214,8 @@ public:
         void registerInvoker(const wukong::proto::Invoker &invoker);
 
         std::string getInvokersInfo() const;
+
+        bool isReconnect(const wukong::proto::Invoker &invoker);
 
         std::pair<bool, std::string> invokerCheck(const wukong::proto::Invoker &invoker);
 

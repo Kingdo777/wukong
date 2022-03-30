@@ -107,7 +107,7 @@ if (NOT fmt_FOUND)
     FetchContent_Declare(
             fmt
             GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-            GIT_TAG        8.1.1
+            GIT_TAG 8.1.1
             GIT_SHALLOW true
     )
 
@@ -134,6 +134,11 @@ if (NOT libuv_FOUND)
 endif ()
 target_link_libraries(common_dependencies INTERFACE uv)
 
+#----------------------- Boost ------------------------------------
+# 因为boost太大了，不适合使用FetchContent进行安装
+find_package(Boost COMPONENTS filesystem REQUIRED)
+target_link_libraries(common_dependencies INTERFACE Boost::filesystem)
+
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE
         pthread
@@ -142,5 +147,8 @@ target_link_libraries(common_dependencies INTERFACE
         )
 
 #--------------------------------------------------------------------
+
+target_include_directories(common_dependencies INTERFACE ${WUKONG_INCLUDE_DIR})
+
 # 起一个别名, 因为当前CMAKE不支持直接生成wukong::格式的lib
 add_library(wukong::common_dependencies ALIAS common_dependencies)

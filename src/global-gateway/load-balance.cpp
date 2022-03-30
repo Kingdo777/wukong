@@ -15,6 +15,7 @@
 void LoadBalanceClientHandler::registerPoller(Pistache::Polling::Epoll &poller) {
     functionCallQueue.bind(poller);
     startupInstanceQueue.bind(poller);
+    responseQueue.bind(poller);
     Base::registerPoller(poller);
 }
 
@@ -24,6 +25,8 @@ void LoadBalanceClientHandler::onReady(const Pistache::Aio::FdSet &fds) {
             handleFunctionCallQueue();
         } else if (fd.getTag() == startupInstanceQueue.tag()) {
             handleStartupInstanceQueue();
+        } else if (fd.getTag() == responseQueue.tag()) {
+            handleResponseQueue();
         }
     }
     Base::onReady(fds);
@@ -47,9 +50,28 @@ void LoadBalanceClientHandler::handleStartupInstanceQueue() {
     }
 }
 
+void LoadBalanceClientHandler::handleResponseQueue() {
+    for (;;) {
+        auto entry = responseQueue.popSafe();
+        if (!entry)
+            break;
+        switch (entry->type) {
+
+            case FunctionCall:
+                responseFunctionCall(entry->code, entry->result, this, entry->index);
+                break;
+            case StartupInstance:
+                responseStartupInstance(entry->code, entry->result, this, entry->index);
+                break;
+        }
+    }
+}
+
 void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::FunctionCallEntry &&entry) {
     auto uri = fmt::format("http://{}:{}/function/call/{}", entry.instanceHost, entry.instancePort, entry.funcname);
     auto res = post(uri, entry.data);
+    if (entry.is_async)
+        return;
     std::string funcEntryIndex = wukong::utils::randomString(15);
     wukong::utils::UniqueLock lock(functionCallMapMutex);
     functionCallMap.insert(std::make_pair(funcEntryIndex, std::move(entry)));
@@ -58,7 +80,7 @@ void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::Funct
             [funcEntryIndex, this](Pistache::Http::Response response) {
                 auto code = response.code();
                 std::string result = response.body();
-                responseFunctionCall(code, result, funcEntryIndex);
+                responseFunctionCall(code, result, this, funcEntryIndex);
             },
             [funcEntryIndex, this](std::exception_ptr exc) {
                 try {
@@ -67,13 +89,13 @@ void LoadBalanceClientHandler::asyncCallFunction(LoadBalanceClientHandler::Funct
                 catch (const std::exception &e) {
                     auto code = Pistache::Http::Code::Internal_Server_Error;
                     std::string result = e.what();
-                    responseFunctionCall(code, result, funcEntryIndex);
+                    responseFunctionCall(code, result, this, funcEntryIndex);
                 }
             });
 }
 
 void LoadBalanceClientHandler::asyncStartupInstance(LoadBalanceClientHandler::StartupInstanceEntry &&entry) {
-    auto uri = fmt::format("http://{}:{}/function/startup", entry.invokerHost, entry.invokerPort);
+    auto uri = fmt::format("http://{}:{}/instance/startup", entry.invokerHost, entry.invokerPort);
     auto res = post(uri, entry.data);
     std::string entryIndex = wukong::utils::randomString(15);
     wukong::utils::UniqueLock lock(startupInstanceMapMutex);
@@ -83,7 +105,7 @@ void LoadBalanceClientHandler::asyncStartupInstance(LoadBalanceClientHandler::St
             [entryIndex, this](Pistache::Http::Response response) {
                 auto code = response.code();
                 std::string result = response.body();
-                responseStartupInstance(code, result, entryIndex);
+                responseStartupInstance(code, result, this, entryIndex);
             },
             [entryIndex, this](std::exception_ptr exc) {
                 try {
@@ -92,7 +114,7 @@ void LoadBalanceClientHandler::asyncStartupInstance(LoadBalanceClientHandler::St
                 catch (const std::exception &e) {
                     auto code = Pistache::Http::Code::Internal_Server_Error;
                     std::string result = e.what();
-                    responseStartupInstance(code, result, entryIndex);
+                    responseStartupInstance(code, result, this, entryIndex);
                 }
             });
 }
@@ -108,8 +130,15 @@ void LoadBalanceClientHandler::startupInstance(LoadBalanceClientHandler::Startup
     startupInstanceQueue.push(std::move(entry));
 }
 
-void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, std::string &result,
+void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, const std::string &result,
+                                                    LoadBalanceClientHandler *h,
                                                     const std::string &funcEntryIndex) {
+    if (h != this) {
+        /// 这里是我想多了， 虽然很难想，但是基本上确定，虽然post返回后更换了线程但是依然会执行原来的handler，很难理解的地方！
+        assert(false);
+        ResponseEntry entry(code, result, funcEntryIndex, ResponseType::FunctionCall);
+        return;
+    }
     wukong::utils::UniqueLock lock(functionCallMapMutex);
     auto iter = functionCallMap.find(funcEntryIndex);
     if (iter == functionCallMap.end()) {
@@ -117,13 +146,23 @@ void LoadBalanceClientHandler::responseFunctionCall(Pistache::Http::Code code, s
                                  funcEntryIndex));
         return;
     }
+    if (code != Pistache::Http::Code::Ok) {
+        auto msg = fmt::format("Call Function Failed : {}", result);
+        SPDLOG_ERROR(msg);
+    }
     iter->second.response.send(code, result);
     functionCallMap.erase(iter);
 }
 
-void LoadBalanceClientHandler::responseStartupInstance(Pistache::Http::Code code,
-                                                       std::string &result,
+void LoadBalanceClientHandler::responseStartupInstance(Pistache::Http::Code code, const std::string &result,
+                                                       LoadBalanceClientHandler *h,
                                                        const std::string &startupInstanceEntryIndex) {
+    if (h != this) {
+        /// 这里是我想多了， 虽然很难想，但是基本上确定，虽然post返回后更换了线程但是依然会执行原来的handler，很难理解的地方！
+        assert(false);
+        ResponseEntry entry(code, result, startupInstanceEntryIndex, ResponseType::StartupInstance);
+        return;
+    }
     wukong::utils::UniqueLock lock(startupInstanceMapMutex);
     if (!startupInstanceMap.contains(startupInstanceEntryIndex)) {
         SPDLOG_ERROR(fmt::format("functionCall not Find in functionCallMap, with funcEntryIndex `{}`",
@@ -147,7 +186,8 @@ void LoadBalanceClientHandler::responseStartupInstance(Pistache::Http::Code code
         startupInstanceMap.erase(startupInstanceEntryIndex);
         return;
     }
-    auto msg = fmt::format("Create Instance Failed : ", result);
+    auto msg = fmt::format("Create Instance Failed : {}", result);
+    SPDLOG_ERROR(msg);
     entry.funcCallEntry.response.send(code, msg);
     startupInstanceMap.erase(startupInstanceEntryIndex);
 }
@@ -197,12 +237,12 @@ void LoadBalance::dispatch(wukong::proto::Message &&msg, Pistache::Http::Respons
         return;
     }
     WK_CHECK_WITH_ASSERT(func_index_set.size() == 1, "FunctionMete Get unknown errors");
-    auto func_index = *func_index_set.begin();
-    wukong::proto::Function func = functions.functions.at(func_index);
     LoadBalanceClientHandler::FunctionCallEntry functionCallEntry(
             "",
             "",
             msg.function(),
+            msg.isasync(),
+            msg.resultkey(),
             wukong::proto::messageToJson(msg),
             std::move(response)
     );
@@ -220,13 +260,16 @@ void LoadBalance::dispatch(wukong::proto::Message &&msg, Pistache::Http::Respons
     if (!instance_present) {
         /// D1. 启动成功后，派发请求
         /// D2. 启动失败，则返回错误内容给用户
+        std::string app_index = fmt::format("{}#{}", msg.user(), msg.application());
+        WK_CHECK_WITH_ASSERT(applications.applications.contains(app_index), "ApplicationMete Get unknown errors");
+        wukong::proto::Application app = applications.applications.at(app_index);
         wukong::proto::Instance instance;
-        instance.set_user(func.user());
-        instance.set_application(func.application());
+        instance.set_user(app.user());
+        instance.set_application(app.appname());
         instance.set_invokerid(ink.invokerid());
         LoadBalanceClientHandler::StartupInstanceEntry startupInstanceEntry(ink.ip(),
                                                                             std::to_string(ink.port()),
-                                                                            messageToJson(func),
+                                                                            messageToJson(app),
                                                                             std::move(instance),
                                                                             std::move(functionCallEntry));
         pickOneHandler()->startupInstance(std::move(startupInstanceEntry));
@@ -261,8 +304,14 @@ void LoadBalance::handleInvokerRegister(const std::string &host,
                                         const std::string &invokerJson,
                                         Pistache::Http::ResponseWriter response) {
     wukong::proto::Invoker invoker = wukong::proto::jsonToInvoker(invokerJson);
-    invoker.set_registertime(wukong::utils::getMillsTimestamp());
     invoker.set_ip(host);
+    if (invokers.isReconnect(invoker)) {
+        invoker.set_ip(host);
+        response.send(Pistache::Http::Code::Ok, wukong::proto::messageToJson(invoker));
+        SPDLOG_DEBUG("Invoker [ID={}] ReConnect Done. Success", invoker.invokerid());
+        return;
+    }
+    invoker.set_registertime(wukong::utils::getMillsTimestamp());
 
     wukong::utils::WriteLock lock(invokers_mutex);
     auto check_result = invokers.invokerCheck(invoker);
@@ -270,10 +319,10 @@ void LoadBalance::handleInvokerRegister(const std::string &host,
     if (check_result.first) {
         invokers.registerInvoker(invoker);
         response.send(Pistache::Http::Code::Ok, wukong::proto::messageToJson(invoker));
-        SPDLOG_DEBUG("Invoker Register Done. Success");
+        SPDLOG_DEBUG("Invoker [ID={}] Register Done. Success", invoker.invokerid());
     } else {
         response.send(Pistache::Http::Code::Bad_Request, check_result.second);
-        SPDLOG_DEBUG("Invoker Register Done. Failed: {}", check_result.second);
+        SPDLOG_DEBUG("Invoker [ID={}] Register Done. Failed: {}", invoker.invokerid(), check_result.second);
     }
 }
 
@@ -402,6 +451,12 @@ void LoadBalance::handleFuncInfo(const std::string &username,
 }
 
 ///###########################Invoker###################################
+bool LoadBalance::Invoker::isReconnect(const wukong::proto::Invoker &invoker) {
+    return invokerSet.contains(invoker.invokerid()) &&
+           invokers.at(invoker.invokerid()).ip() == invoker.ip() &&
+           invokers.at(invoker.invokerid()).port() == invoker.port();
+}
+
 std::pair<bool, std::string> LoadBalance::Invoker::invokerCheck(const wukong::proto::Invoker &invoker) {
 
     if (invoker.invokerid().empty()) {

@@ -6,21 +6,18 @@
 #include <wukong/utils/signal-tool.h>
 #include <wukong/utils/timing.h>
 #include <wukong/utils/env.h>
-#include <wukong/utils/process/DefaultSubProcess.h>
 
-#include "LocalGatewayEndpoint.h"
-#include "macro.h"
+#include "LocalGateway.h"
 
 int main() {
     wukong::utils::initLog();
     SPDLOG_INFO("-------------------local-gateway config---------------------");
     wukong::utils::Config::print();
     SIGNAL_HANDLER()
-    LocalGatewayEndpoint e;
-    e.start();
-    RETURN_ENDPOINT_PORT(e);
+    LocalGateway lg;
+    lg.start();
     SIGNAL_WAIT()
-    e.stop();
+    lg.shutdown();
     wukong::utils::Timing::printTimerTotals();
     return 0;
 }

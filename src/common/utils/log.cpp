@@ -5,7 +5,7 @@
 #include <wukong/utils/config.h>
 
 
-void wukong::utils::initLog() {
+void wukong::utils::initLog(std::string exec_name) {
     // Docs: https://github.com/gabime/spdlog/wiki/3.-Custom-formatting
     // %^ %$    之间的内容将会被标上颜色
     // %H:%M:%S 是时间格式
@@ -13,7 +13,13 @@ void wukong::utils::initLog() {
     // %=6l     是全写log类型，info、debug等，=6表示占6字符居中
     // %-60v    是log内容，-60表示占60字符左对齐
     // %@       是文件名和行号
-    spdlog::set_pattern("%^[%H:%M:%S] [%t] [%=6l]%$ %-60v [%@]");
+    if (exec_name.empty()) {
+        exec_name = boost::dll::program_location().filename().string();
+        exec_name.resize(25);
+    }
+    std::string pattern = fmt::format("%^ [{:^25}] [%H:%M:%S] [%t] [%=6l]%$ %-60v [%@]", exec_name);
+
+    spdlog::set_pattern(pattern);
 
     if (Config::LogLevel() == "trace") {
         CHECK_MIN_LEVEL(spdlog::level::trace)

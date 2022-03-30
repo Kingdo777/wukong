@@ -78,6 +78,18 @@ namespace wukong::utils {
             "PAUSE_TIMEOUT",
             INSTANCE_PAUSE_TIMEOUT); /// 1h
 
+    const int Config::insFuncReadFD = getIntEnvVar( /* NOLINT */
+            "INSTANCE_FUNCTION_DEFAULT_READ_FD",
+            3); /// 3
+
+    const uint64_t Config::insFuncReadBufferSize = getIntEnvVar( /* NOLINT */
+            "INSTANCE_FUNCTION_DEFAULT_READ_BUFFER_SIZE",
+            2048); /// 3
+
+    const int Config::insFuncWriteFD = getIntEnvVar( /* NOLINT */
+            "INSTANCE_FUNCTION_DEFAULT_WRITE_FD",
+            4); /// 4
+
     void Config::print() {
         SPDLOG_INFO("--- Log ---");
         SPDLOG_INFO("logLevel                       {}", logLevel);
@@ -108,6 +120,11 @@ namespace wukong::utils {
         SPDLOG_INFO("invokerCPU                     {} cores", invokerCPU / 1000.0);
         SPDLOG_INFO("invokerMemory                  {:.1f}MB", invokerMemory / 1024.0);
         SPDLOG_INFO("pauseTimeout                   {}s", pauseTimeout);
+
+        SPDLOG_INFO("--- Instance ---");
+        SPDLOG_INFO("insFuncDefaultReadFD           {}", insFuncReadFD);
+        SPDLOG_INFO("insFuncReadBufferSize          {}", insFuncReadBufferSize);
+        SPDLOG_INFO("insFuncDefaultWriteFD          {}", insFuncWriteFD);
 
         SPDLOG_INFO("------------------------------------------------------------");
     }

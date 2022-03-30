@@ -36,36 +36,14 @@ public:
 
     wukong::proto::Invoker invokerProto;
 
-    std::string toInvokerJson() const {
-        return wukong::proto::messageToJson(invokerProto);
-    }
+    std::string toInvokerJson() const;
 
 #define FUNCTION_INDEX(username, appname, funcname) fmt::format("{}#{}#{}",username,appname,funcname)
+#define APP_INDEX(username, appname) fmt::format("{}#{}",username,appname)
 
-    void startupInstance(const wukong::proto::Function &func, Pistache::Http::ResponseWriter response) {
-        wukong::utils::UniqueLock lock(proxy_mutex);
-        auto username = func.user();
-        auto appname = func.application();
-        auto funcname = func.functionname();
-        auto func_index = FUNCTION_INDEX(username, appname, funcname);
+    void startupInstance(const wukong::proto::Application &app, Pistache::Http::ResponseWriter response);
 
-        if (!proxyMap.contains(func_index)) {
-            auto proxy_prt = std::make_shared<ProcessInstanceProxy>();
-            proxyMap.emplace(func_index, proxy_prt);
-        }
-        auto proxy = proxyMap[func_index];
-        auto res = proxy->start(func);
-        if (res.first) {
-            wukong::proto::ReplyStartupInstance reply;
-            reply.set_host(proxy->getInstanceHost());
-            reply.set_port(std::to_string(proxy->getInstancePort()));
-            response.send(Pistache::Http::Code::Ok, wukong::proto::messageToJson(reply));
-        } else {
-            response.send(Pistache::Http::Code::Internal_Server_Error, res.second);
-        }
-    }
-
-    void shutdownInstance(const wukong::proto::Function &func, Pistache::Http::ResponseWriter response) {
+    void shutdownInstance(const wukong::proto::Application &app, Pistache::Http::ResponseWriter response) {
         wukong::utils::UniqueLock lock(proxy_mutex);
 
     }

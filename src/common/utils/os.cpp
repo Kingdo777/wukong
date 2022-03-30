@@ -4,8 +4,6 @@
 
 #include <wukong/utils/os.h>
 #include <thread>
-#include <cassert>
-#include <wukong/utils/log.h>
 
 int wukong::utils::hardware_concurrency() { return (int) std::thread::hardware_concurrency(); }
 
@@ -178,27 +176,5 @@ namespace wukong::utils {
             return errno;
         return 0;
 
-    }
-
-    void write_int(int fd, int val) {
-        ssize_t n;
-        do
-            n = ::write(fd, &val, sizeof(val));
-        while (n == -1 && errno == EINTR);
-        if (n == -1 && errno == EPIPE)
-            return; /* parent process has quit */
-        WK_CHECK(n == sizeof(val), "write_int failed");
-    }
-
-    int read_int(int fd) {
-        int val;
-        ssize_t n;
-        do
-            n = ::read(fd, &val, sizeof(val));
-        while (n == -1 && errno == EINTR);
-        if (n == -1 && errno == EPIPE)
-            return 0; /* parent process has quit */
-        WK_CHECK(n == sizeof(val), "read_int failed");
-        return val;
     }
 }

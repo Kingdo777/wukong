@@ -1,5 +1,4 @@
 #include "pistache/endpoint.h"
-#include <wukong/proto/proto.h>
 
 using namespace Pistache;
 

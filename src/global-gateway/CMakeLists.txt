@@ -6,5 +6,6 @@ target_link_libraries(global-gateway
         wukong::client-server
         wukong::utils
         wukong::proto
+        wukong::common_dependencies
         )
 add_dependencies(global-gateway wukong::proto)

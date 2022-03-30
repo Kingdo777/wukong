@@ -135,6 +135,16 @@ namespace wukong::utils {
         return std::string{reply->str, reply->len};
     }
 
+    void Redis::get_to_file(const std::string &key, const boost::filesystem::path &file_path) {
+        WK_CHECK_WITH_ASSERT(exists(file_path.parent_path()), "file_path is not exists");
+        auto reply = safeRedisCommand("GET %s", key.c_str());
+        std::ofstream f;
+        f.open(file_path.c_str(), std::ios::out | std::ios::binary);
+        f.write(reply->str, reply->len);
+        f.flush();
+        f.close();
+    }
+
     void Redis::set(const std::string &key, const std::string &value) {
         auto reply =
                 safeRedisCommand("SET %s %b", key.c_str(), value.c_str(), value.size());

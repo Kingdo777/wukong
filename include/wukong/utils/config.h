@@ -58,6 +58,13 @@ namespace wukong::utils {
 
         static int InvokerPort() { return invokerPort; };
 
+        static int InstanceFunctionDefaultReadFD() { return insFuncReadFD; };
+
+        static uint64_t InstanceFunctionReadBufferSize() { return insFuncReadBufferSize; };
+
+        static int InstanceFunctionDefaultWriteFD() { return insFuncWriteFD; };
+
+
         static void print();
 
     private:
@@ -98,6 +105,13 @@ namespace wukong::utils {
         const static int invokerCPU;
         const static int invokerMemory;
         const static uint64_t pauseTimeout;
+
+        /// Instance
+        const static int insFuncReadFD;
+        const static uint64_t insFuncReadBufferSize;
+        const static int insFuncWriteFD;
+
+
     };
 }
 

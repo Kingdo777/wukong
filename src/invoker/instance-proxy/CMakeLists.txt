@@ -11,6 +11,7 @@ endif ()
 target_link_libraries(invoker-proxy
         wukong::proto
         wukong::utils
+        wukong::common_dependencies
         )
 
 add_dependencies(invoker-proxy wukong::proto)

@@ -48,14 +48,14 @@ namespace wukong::utils {
 
         std::sort(totals.begin(), totals.end());
 
-        printf("---------- TIMER TOTALS ----------\n");
-        printf("Total (ms)  Avg (ms)   Count  Label\n");
+        SPDLOG_INFO("---------- TIMER TOTALS ----------");
+        SPDLOG_INFO("Total (ms)  Avg (ms)   Count  Label");
         for (auto &p: totals) {
             double millis = double(p.first) / 1000.0;
             int count = timerCounts[p.second];
             double avg = millis / count;
-            printf(
-                    "%-11.2f %-10.3f %5i  %s\n", millis, avg, count, p.second.c_str());
+            SPDLOG_INFO(
+                    "%-11.2f %-10.3f %5i  %s", millis, avg, count, p.second.c_str());
         }
     }
 }

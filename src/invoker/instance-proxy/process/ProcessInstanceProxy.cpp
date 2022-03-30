@@ -4,49 +4,46 @@
 
 #include "ProcessInstanceProxy.h"
 
-std::pair<bool, std::string> ProcessInstanceProxy::doStart(InstanceProxy::FuncResource fr, const std::string &funcname) {
+std::pair<bool, std::string>
+ProcessInstanceProxy::doStart(const std::string &username, const std::string &appname) {
     {
         bool success = false;
         std::string msg = "ok";
         /// 获取可执行文件的路径
-        std::string curr_path;
-        curr_path.resize(1024);
-        auto path_size = readlink("/proc/self/exe", curr_path.data(), curr_path.size());
-        WK_CHECK_WITH_ASSERT(path_size != -1, "get exec path failed");
-        exec_path = curr_path.substr(0, path_size - std::size("invoker")) + "/instance-local-gateway";
+//        std::string curr_path;
+//        curr_path.resize(1024);
+//        auto path_size = readlink("/proc/self/exe", curr_path.data(), curr_path.size());
+//        WK_CHECK_WITH_ASSERT(path_size != -1, "get exec path failed");
+//        exec_path = curr_path.substr(0, path_size - std::size("invoker")) + "/instance-local-gateway";
+        exec_path = boost::dll::program_location().parent_path().append("instance-local-gateway");
         /// 设置options，包括环境变量等
-        wukong::utils::SubProcess::Options options(exec_path);
+        wukong::utils::SubProcess::Options options(exec_path.string());
         options.Env("ENDPOINT_PORT", 0).
                 Env("NEED_RETURN_PORT", 1).
-                Flags(0).
-                Memory(fr.memory).
-                CPU(fr.cpu);
+                Flags(0);
 
         process.setOptions(options);
-        /// 创建一个pipe，用于通讯获取Instance Port
-        auto fd_index = process.createPIPE(wukong::utils::SubProcess::CREATE_PIPE |
-                                           wukong::utils::SubProcess::WRITABLE_PIPE |
-                                           wukong::utils::SubProcess::READABLE_PIPE);
         /// 启动子进程
         int err = process.spawn();
         if (!(0 == err)) {
-            msg = fmt::format("spawn process \"{}\" failed with errno {}", exec_path, err);
+            msg = fmt::format("spawn process \"{}\" failed with errno {}", exec_path.string(), err);
             return std::make_pair(success, msg);
         }
         /// 获取实例的port
-        int fd = process.getPIPE_FD(fd_index);
+        int fd = process.read_fd();
         /// TODO 这里需要将fd转化为阻塞的
         wukong::utils::nonblock_ioctl(fd, 0);
-        instancePort = wukong::utils::read_int(fd);
+        wukong::utils::read_from_fd(fd, &instancePort);
         if (instancePort <= 0) {
-            msg = fmt::format("can't get Instance Port", exec_path, err);
+            msg = fmt::format("can't get Instance Port", exec_path.string(), err);
             return std::make_pair(success, msg);
         }
         auto ping_res = this->doPing();
         if (ping_res.first) {
             success = true;
         } else {
-            msg = fmt::format("spawn process \"{}\" success, but cant't ping it : {}", exec_path, ping_res.second);
+            msg = fmt::format("spawn process \"{}\" success, but cant't ping it : {}", exec_path.string(),
+                              ping_res.second);
             this->remove(true);
         }
         return std::make_pair(success, msg);
@@ -54,16 +51,15 @@ std::pair<bool, std::string> ProcessInstanceProxy::doStart(InstanceProxy::FuncRe
 }
 
 std::pair<bool, std::string>
-ProcessInstanceProxy::doInit(bool isPython, bool localStorage, const std::string &storageKey) {
+ProcessInstanceProxy::doInit(const std::string &username, const std::string &appname) {
     bool success = false;
     std::string msg = "ok";
     std::string uri = fmt::format("http://localhost:{}/init", instancePort);
-    Pistache::Http::Cookie cookie1("isPython", std::to_string(isPython));
-    Pistache::Http::Cookie cookie2("localStorage", std::to_string(localStorage));
-    Pistache::Http::Cookie cookie3("storageKey", storageKey);
+    Pistache::Http::Cookie cookie1("username", username);
+    Pistache::Http::Cookie cookie2("appname", appname);
     auto rsp = InvokerClientServer::client().
             post(uri).
-            cookie(cookie1).cookie(cookie2).cookie(cookie3).
+            cookie(cookie1).cookie(cookie2).
             send();
     while (rsp.isPending());
     rsp.then(

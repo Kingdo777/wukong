@@ -71,3 +71,29 @@ std::pair<bool, std::string> Invoker::register2LB(const std::string &invokerJson
     }
     return std::make_pair(success, msg);
 }
+
+void Invoker::startupInstance(const wukong::proto::Application &app, Pistache::Http::ResponseWriter response) {
+    wukong::utils::UniqueLock lock(proxy_mutex);
+    auto username = app.user();
+    auto appname = app.appname();
+    auto app_index = APP_INDEX(username, appname);
+
+    if (!proxyMap.contains(app_index)) {
+        auto proxy_prt = std::make_shared<ProcessInstanceProxy>();
+        proxyMap.emplace(app_index, proxy_prt);
+        auto res = proxy_prt->start(app);
+        if (!res.first) {
+            response.send(Pistache::Http::Code::Internal_Server_Error, res.second);
+            return;
+        }
+    }
+    auto proxy = proxyMap[app_index];
+    wukong::proto::ReplyStartupInstance reply;
+    reply.set_host(proxy->getInstanceHost());
+    reply.set_port(std::to_string(proxy->getInstancePort()));
+    response.send(Pistache::Http::Code::Ok, wukong::proto::messageToJson(reply));
+}
+
+std::string Invoker::toInvokerJson() const {
+    return wukong::proto::messageToJson(invokerProto);
+}

@@ -64,11 +64,17 @@ GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pista
         msg.set_user("kingdo");
         msg.set_application("test");
         msg.set_function("hello");
-        msg.set_isasync(true);
         msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
-        msg.set_inputdata("");
-        msg.set_timestamp(time(nullptr));
-
+        msg.set_inputdata("wukong");
+        msg.set_isasync(false);
+        msg.set_resultkey(fmt::format("{}#{}#{}-{}",
+                                      msg.user(),
+                                      msg.application(),
+                                      msg.function(),
+                                      msg.id()));
+        if (msg.isasync())
+            response.send(Pistache::Http::Code::Ok, fmt::format("Result Key : <{}>", msg.resultkey()));
+        msg.set_timestamp(wukong::utils::getMillsTimestamp());
         endpoint()->lb->dispatch(std::move(msg), std::move(response));
     }
 }

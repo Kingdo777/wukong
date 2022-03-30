@@ -5,6 +5,9 @@
 #ifndef WUKONG_LOG_H
 #define WUKONG_LOG_H
 
+#include <boost/filesystem.hpp>
+#include <boost/dll.hpp>
+
 /// SPDLOG_ACTIVE_LEVEL 是spdlog自己宏, 指定了使用spflog的宏函数输出的时候, 显示那一级别的日志信息
 #ifdef NO_DEBUG
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO   // 不显示DEBUG的信息
@@ -34,7 +37,7 @@ do {                                    \
 } while(false)
 
 namespace wukong::utils {
-    void initLog();
+    void initLog(std::string exec_name = "");
 
     void printAllENV();
 }

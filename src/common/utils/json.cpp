@@ -49,6 +49,15 @@ namespace wukong::utils {
         return it->value.GetInt64();
     }
 
+    uint64_t getUInt64FromJson(rapidjson::Document &doc, const std::string &key, int dflt) {
+        rapidjson::Value::MemberIterator it = doc.FindMember(key.c_str());
+        if (it == doc.MemberEnd()) {
+            return dflt;
+        }
+
+        return it->value.GetUint64();
+    }
+
 
     std::string getStringFromJson(rapidjson::Document &doc, const std::string &key, const std::string &dflt) {
         rapidjson::Value::MemberIterator it = doc.FindMember(key.c_str());
