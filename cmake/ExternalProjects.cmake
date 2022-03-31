@@ -73,7 +73,7 @@ if (NOT Pistache_FOUND)
     set(DPISTACHE_BUILD_DOCS OFF CACHE BOOL "")
 
     FetchContent_MakeAvailable(pistache)
-    target_link_libraries(common_dependencies INTERFACE pistache_static)
+    target_link_libraries(common_dependencies INTERFACE pistache_shared)
 else ()
     target_link_libraries(common_dependencies INTERFACE PkgConfig::Pistache)
 endif ()

@@ -47,11 +47,28 @@ namespace wukong::client {
 
         void start(const Options &options);
 
+        void stop() {
+            if (status != Shutdown)
+                Pistache::Http::Client::shutdown();
+        }
+
+        bool isStarted() const {
+            return status == Started;
+        }
+
         std::shared_ptr<ClientHandler> pickOneHandler();
 
         void setHandler(std::shared_ptr<Pistache::Aio::Handler> handler_);
 
     private:
+
+        enum ClientServerStatus {
+            Created,
+            Started,
+            Shutdown
+        };
+
+        ClientServerStatus status = ClientServerStatus::Created;
 
         std::shared_ptr<Pistache::Aio::Handler> handler = std::make_shared<ClientHandler>(this);
 

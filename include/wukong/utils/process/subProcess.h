@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <wukong/utils/signal-tool.h>
 #include <wukong/utils/log.h>
 #include <wukong/utils/macro.h>
 
@@ -119,7 +120,9 @@ namespace wukong::utils {
 
         pid_t getPid();
 
-        [[nodiscard]] int kill(int signum) const;
+        [[nodiscard]] int send(int signum) const;
+
+        bool kill();
 
         uint64_t createPIPE(uint64_t type) {
             WK_CHECK_WITH_ASSERT(stdio.size() >= 3, "count of stdio illegal");

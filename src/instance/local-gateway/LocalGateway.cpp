@@ -29,7 +29,8 @@ void LocalGateway::start() {
 
 void LocalGateway::shutdown() {
     endpoint.stop();
-    cs.shutdown();
+    cs.stop();
+    killAllProcess();
 }
 
 bool LocalGateway::checkUser(const std::string &username_) {
@@ -212,4 +213,12 @@ std::set<int> LocalGateway::getReadFDs() {
 
 std::shared_ptr<LocalGatewayClientHandler> LocalGateway::pickOneHandler() {
     return std::static_pointer_cast<LocalGatewayClientHandler>(cs.pickOneHandler());
+}
+
+void LocalGateway::killAllProcess() {
+    wukong::utils::WriteLock lock(process_mutex);
+    for (auto &item: processes) {
+        item.second.process()->kill();
+    }
+    processes.clear();
 }

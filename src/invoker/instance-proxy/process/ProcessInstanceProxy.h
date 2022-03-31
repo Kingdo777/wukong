@@ -15,19 +15,6 @@ class ProcessInstanceProxy : public InstanceProxy {
 public:
     ProcessInstanceProxy() = default;
 
-    void test() {
-        InvokerClientServer::start();
-        auto res = doStart("kingdo", "test");
-        if (res.first) {
-            res = doInit("kingdo", "test");
-            if (res.first) {
-                SPDLOG_INFO("!!!!!!!!!!!!!!!!!!!!!!!!");
-                wait(nullptr);
-            }
-        } else
-            SPDLOG_ERROR(res.second);
-    }
-
     [[nodiscard]] int getInstancePort() const override {
         return instancePort;
     }
@@ -47,7 +34,9 @@ private:
     }
 
     std::pair<bool, std::string> doRemove() override {
-        return {};
+        bool ret = process.kill();
+        std::string msg = ret ? "Success" : "Failed";
+        return std::make_pair(ret, msg);
     }
 
     std::pair<bool, std::string> doPing() override;

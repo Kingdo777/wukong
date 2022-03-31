@@ -18,11 +18,19 @@ void Invoker::start() {
         SPDLOG_WARN("Invoker is Started");
         return;
     }
-    InvokerClientServer::start();
+
+    // TODO Invoker的clientServer线程数，应给设置为1
+    auto t_count = wukong::utils::Config::ClientNumThreads();
+    auto opts = Pistache::Http::Client::options().
+            threads(t_count).
+            maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
+    cs.start(opts);
+    SPDLOG_INFO("Starting Invoker ClientServer with {} threads", t_count);
+
     auto result = register2LB(toInvokerJson());
     if (!result.first) {
         SPDLOG_ERROR("Connect LB Failed : {}", result.second);
-        InvokerClientServer::shutdown();
+        cs.stop();
         exit(0);
     }
     SPDLOG_INFO("Invoker Register Success : {}", result.second);
@@ -38,18 +46,23 @@ void Invoker::stop() {
         return;
     }
     endpoint.stop();
-    InvokerClientServer::shutdown();
+    cs.stop();
     status = InvokerStatus::Stopped;
+
+    for (const auto &item: proxyMap) {
+        item.second->remove(true);
+    }
+
 }
 
-std::pair<bool, std::string> Invoker::register2LB(const std::string &invokerJson) const {
+std::pair<bool, std::string> Invoker::register2LB(const std::string &invokerJson) {
     bool success = false;
     std::string msg = "Invoker Registered";
     if (!registered) {
         std::string LBHost = wukong::utils::Config::LBHost();
         int LBPort = wukong::utils::Config::LBPort();
         std::string uri = LBHost + ":" + std::to_string(LBPort) + "/invoker/register";
-        auto rsp = InvokerClientServer::client().post(uri).body(invokerJson).timeout(std::chrono::seconds(5)).send();
+        auto rsp = cs.post(uri).body(invokerJson).timeout(std::chrono::seconds(5)).send();
         while (rsp.isPending());
         rsp.then(
                 [&](Pistache::Http::Response response) {
@@ -80,6 +93,7 @@ void Invoker::startupInstance(const wukong::proto::Application &app, Pistache::H
 
     if (!proxyMap.contains(app_index)) {
         auto proxy_prt = std::make_shared<ProcessInstanceProxy>();
+        proxy_prt->setClient(&cs);
         proxyMap.emplace(app_index, proxy_prt);
         auto res = proxy_prt->start(app);
         if (!res.first) {

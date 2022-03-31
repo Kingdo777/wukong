@@ -7,6 +7,7 @@
 
 #include <wukong/utils/log.h>
 #include <csignal>
+#include <sys/wait.h>
 
 
 #define SIGNAL_HANDLER()                                                \

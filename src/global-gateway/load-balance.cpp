@@ -215,7 +215,7 @@ void LoadBalance::stop() {
         return;
     }
     SPDLOG_INFO("Shutting down LoadBalance");
-    cs.shutdown();
+    cs.stop();
     status = Stopped;
 }
 

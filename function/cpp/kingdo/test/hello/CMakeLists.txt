@@ -1,4 +1,4 @@
-add_library(func_hello SHARED main.cpp)
+add_library(func_hello MODULE main.cpp)
 
 target_link_libraries(func_hello PRIVATE
         wukong::function::interface

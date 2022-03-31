@@ -7,7 +7,7 @@
 
 #include <wukong/proto/proto.h>
 #include <wukong/utils/locks.h>
-#include "invokerClientServer.h"
+#include <wukong/client/client-server.h>
 #include "invokerEndpoint.h"
 #include "instance-proxy/InstanceProxy.h"
 
@@ -60,7 +60,9 @@ private:
 
     InvokerEndpoint endpoint;
 
-    std::pair<bool, std::string> register2LB(const std::string &invokerJson) const;
+    wukong::client::ClientServer cs;
+
+    std::pair<bool, std::string> register2LB(const std::string &invokerJson);
 
     std::unordered_map<std::string, std::shared_ptr<PROXY_CLASS>> proxyMap;
     std::mutex proxy_mutex;

@@ -73,6 +73,8 @@ private:
 
     std::shared_ptr<LocalGatewayClientHandler> pickOneHandler();
 
+    void killAllProcess();
+
     wukong::utils::Redis &redis = wukong::utils::Redis::getRedis();
 
     LocalGatewayEndpoint endpoint;

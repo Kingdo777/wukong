@@ -8,10 +8,13 @@
 
 namespace wukong::client {
     void ClientServer::start(const Options &options) {
-        pool.init(options.maxConnectionsPerHost_, options.maxResponseSize_);
-        reactor_->init(Pistache::Aio::AsyncContext(options.threads_));
-        transportKey = reactor_->addHandler(handler);
-        reactor_->run();
+        if (status != Started) {
+            pool.init(options.maxConnectionsPerHost_, options.maxResponseSize_);
+            reactor_->init(Pistache::Aio::AsyncContext(options.threads_));
+            transportKey = reactor_->addHandler(handler);
+            reactor_->run();
+            status = Started;
+        }
     }
 
     std::shared_ptr<ClientHandler> ClientServer::pickOneHandler() {
@@ -34,11 +37,13 @@ namespace wukong::client {
         Transport::registerPoller(poller);
     }
 
-    Pistache::Async::Promise<Pistache::Http::Response> ClientHandler::post(const std::string &uri, const std::string &data, std::chrono::milliseconds timeout) {
+    Pistache::Async::Promise<Pistache::Http::Response>
+    ClientHandler::post(const std::string &uri, const std::string &data, std::chrono::milliseconds timeout) {
         return client->post(uri).body(data).timeout(timeout).send();
     }
 
-    Pistache::Async::Promise<Pistache::Http::Response> ClientHandler::get(const std::string &uri, std::chrono::milliseconds timeout) {
+    Pistache::Async::Promise<Pistache::Http::Response>
+    ClientHandler::get(const std::string &uri, std::chrono::milliseconds timeout) {
         return client->get(uri).timeout(timeout).send();
     }
 

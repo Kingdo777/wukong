@@ -57,7 +57,7 @@ ProcessInstanceProxy::doInit(const std::string &username, const std::string &app
     std::string uri = fmt::format("http://localhost:{}/init", instancePort);
     Pistache::Http::Cookie cookie1("username", username);
     Pistache::Http::Cookie cookie2("appname", appname);
-    auto rsp = InvokerClientServer::client().
+    auto rsp = client()->
             post(uri).
             cookie(cookie1).cookie(cookie2).
             send();
@@ -87,7 +87,7 @@ std::pair<bool, std::string> ProcessInstanceProxy::doPing() {
     bool success = false;
     std::string msg = "ok";
     std::string uri = fmt::format("http://localhost:{}/ping", instancePort);
-    auto rsp = InvokerClientServer::client().get(uri).send();
+    auto rsp = client()->get(uri).send();
     while (rsp.isPending());
     rsp.then(
             [&](Pistache::Http::Response response) {

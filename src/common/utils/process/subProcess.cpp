@@ -116,7 +116,7 @@ namespace wukong::utils {
         return pid;
     }
 
-    int SubProcess::kill(int signum) const {
+    int SubProcess::send(int signum) const {
         WK_CHECK_STATE_WITH_ASSERT(Running);
         if (::kill(pid, signum)) {
             SPDLOG_ERROR("kill {} to {} Failed", signum, pid);
@@ -124,4 +124,17 @@ namespace wukong::utils {
         } else
             return 0;
     }
+
+    bool SubProcess::kill() {
+        int ret = send(SIGTERM);
+        if (ret) {
+            SPDLOG_ERROR("Send {} to {} get an errno : {}", SIGKILL, pid, ret);
+            return false;
+        }
+        WK_CHECK(pid == ::waitpid(pid, nullptr, 0), "SubProcess Kill Wrong!");
+        state = Exited;
+        return true;
+    }
+
+
 }
