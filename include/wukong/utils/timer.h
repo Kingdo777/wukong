@@ -6,18 +6,20 @@
 #define TIMER_TEST_TIMER_H
 
 #include <atomic>
-#include <thread>
-#include <utility>
-#include <unistd.h>
 #include <sys/timerfd.h>
+#include <thread>
+#include <unistd.h>
+#include <utility>
 
-#include <pistache/os.h>
 #include <cassert>
+#include <pistache/os.h>
 #include <pistache/reactor.h>
 
-namespace wukong::utils {
+namespace wukong::utils
+{
 
-    class Timer {
+    class Timer
+    {
     public:
         explicit Timer(std::string name = "timer");
 
@@ -30,23 +32,21 @@ namespace wukong::utils {
         void shutdown();
 
     private:
-
         void run();
 
-        void handleFds(const Pistache::Aio::FdSet &fds);
+        void handleFds(const Pistache::Aio::FdSet& fds);
 
         int timer_fd;
 
         Pistache::Polling::Epoll poller;
 
-        void (*onTimeHandler)() =[]() {};
+        void (*onTimeHandler)() = []() {};
 
         std::thread thread;
         std::string threadsName;
 
         std::atomic<bool> shutdown_;
         Pistache::NotifyFd shutdownFd;
-
     };
 
 }

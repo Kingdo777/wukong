@@ -4,19 +4,22 @@
 
 #include <wukong/utils/process/DefaultSubProcess.h>
 
-namespace wukong::utils {
+namespace wukong::utils
+{
 
-    DefaultSubProcess::DefaultSubProcess() {
+    DefaultSubProcess::DefaultSubProcess()
+    {
         /// 创建子进程读端
         write_fd_index = SubProcess::createPIPE(
-                wukong::utils::SubProcess::CREATE_PIPE | wukong::utils::SubProcess::READABLE_PIPE);
+            wukong::utils::SubProcess::CREATE_PIPE | wukong::utils::SubProcess::READABLE_PIPE);
         /// 创建子进程写段
         read_fd_index = SubProcess::createPIPE(
-                wukong::utils::SubProcess::CREATE_PIPE | wukong::utils::SubProcess::READABLE_PIPE);
+            wukong::utils::SubProcess::CREATE_PIPE | wukong::utils::SubProcess::READABLE_PIPE);
     }
 
-    int DefaultSubProcess::spawn() {
-        int signal_pipe[2] = {-1};
+    int DefaultSubProcess::spawn()
+    {
+        int signal_pipe[2] = { -1 };
         std::vector<std::array<int, 2>> pipes;
         ssize_t r;
         pid_t pid;
@@ -24,24 +27,24 @@ namespace wukong::utils {
         int exec_errorno;
         int i;
         int status;
-        while (false);
+        while (false)
+            ;
         WK_CHECK_WITH_ASSERT(!options.file.empty(), "must specify sub-process file path");
-        WK_CHECK_WITH_ASSERT(!(options.flags & ~(DETACHED |
-                                                 SET_GID |
-                                                 SET_UID |
-                                                 SET_CPUS |
-                                                 SET_MEMORY)),
+        WK_CHECK_WITH_ASSERT(!(options.flags & ~(DETACHED | SET_GID | SET_UID | SET_CPUS | SET_MEMORY)),
                              "options.flags is illegal");
 
-        err = ENOMEM;
-        int stdio_count = (int) stdio.size();
-        for (i = 0; i < stdio_count; i++) {
-            pipes.push_back({-1, -1});
+        err             = ENOMEM;
+        int stdio_count = (int)stdio.size();
+        for (i = 0; i < stdio_count; i++)
+        {
+            pipes.push_back({ -1, -1 });
         }
 
-        for (i = 0; i < stdio_count; i++) {
+        for (i = 0; i < stdio_count; i++)
+        {
             err = init_stdio(stdio.at(i), pipes.at(i));
-            if (err) {
+            if (err)
+            {
                 SPDLOG_ERROR("init stdio Failed");
                 goto error;
             }
@@ -60,14 +63,16 @@ namespace wukong::utils {
 
          */
         err = make_pipe(signal_pipe, 0);
-        if (err) {
+        if (err)
+        {
             SPDLOG_ERROR("make signal pipe failed");
             goto error;
         }
 
         pid = fork();
 
-        if (pid == -1) {
+        if (pid == -1)
+        {
             err = errno;
             ::close(signal_pipe[0]);
             ::close(signal_pipe[1]);
@@ -75,7 +80,8 @@ namespace wukong::utils {
             goto error;
         }
 
-        if (pid == 0) {
+        if (pid == 0)
+        {
             process_child_init(pipes, signal_pipe[1]);
             abort();
         }
@@ -87,8 +93,10 @@ namespace wukong::utils {
             r = read(signal_pipe[0], &exec_errorno, sizeof(exec_errorno));
         while (r == -1 && errno == EINTR);
 
-        if (r == 0); /// 子进程正常执行
-        else if ((r == -1 && errno == EPIPE) || r == sizeof(exec_errorno)) {
+        if (r == 0)
+            ; /// 子进程正常执行
+        else if ((r == -1 && errno == EPIPE) || r == sizeof(exec_errorno))
+        {
             /// 子进程遇到错误
             do
                 err = ::waitpid(pid, &status, 0); /* okay, got EPIPE */
@@ -96,17 +104,20 @@ namespace wukong::utils {
             assert(err == pid);
             state = Exited;
             SPDLOG_ERROR("spawn process failed before EXEC");
-        } else
+        }
+        else
             abort();
 
         ::close(signal_pipe[0]);
 
-        for (i = 0; i < stdio_count; i++) {
+        for (i = 0; i < stdio_count; i++)
+        {
             if (!(stdio.at(i).type & CREATE_PIPE) || pipes[i][0] < 0)
                 continue;
-            err = ::close(pipes[i][1]);
+            err            = ::close(pipes[i][1]);
             stdio.at(i).fd = pipes[i][0];
-            if (err != 0) {
+            if (err != 0)
+            {
                 SPDLOG_ERROR("close pipes failed");
                 goto error;
             }
@@ -114,14 +125,15 @@ namespace wukong::utils {
             nonblock_ioctl(pipes[i][0], 1);
         }
 
-        read_fd_ = SubProcess::getPIPE_FD(read_fd_index);
+        read_fd_  = SubProcess::getPIPE_FD(read_fd_index);
         write_fd_ = SubProcess::getPIPE_FD(write_fd_index);
         this->pid = pid;
 
         return exec_errorno;
 
-        error:
-        for (i = 0; i < stdio_count; i++) {
+    error:
+        for (i = 0; i < stdio_count; i++)
+        {
             if (i < stdio_count)
                 if (stdio.at(i).type & (INHERIT_FD))
                     continue;
@@ -134,38 +146,43 @@ namespace wukong::utils {
         return err;
     }
 
-    int DefaultSubProcess::read_fd() const {
+    int DefaultSubProcess::read_fd() const
+    {
         return read_fd_;
     }
 
-    int DefaultSubProcess::write_fd() const {
+    int DefaultSubProcess::write_fd() const
+    {
         return write_fd_;
     }
 
-    int DefaultSubProcess::init_stdio(SubProcess::StdioContainer container, std::array<int, 2> &fds) {
+    int DefaultSubProcess::init_stdio(SubProcess::StdioContainer container, std::array<int, 2>& fds)
+    {
         int mask;
         int fd;
 
         mask = IGNORE | CREATE_PIPE | INHERIT_FD;
 
-        switch (container.type & mask) {
-            case IGNORE:
-                return 0;
-            case CREATE_PIPE:
-                return socket_pair(fds.data());
-            case INHERIT_FD:
-                fd = container.fd;
-                if (fd == -1)
-                    return EINVAL;
-                fds[1] = fd;
-                return 0;
-            default:
-                WK_CHECK_WITH_ASSERT(0, "Unexpected flags");
+        switch (container.type & mask)
+        {
+        case IGNORE:
+            return 0;
+        case CREATE_PIPE:
+            return socket_pair(fds.data());
+        case INHERIT_FD:
+            fd = container.fd;
+            if (fd == -1)
                 return EINVAL;
+            fds[1] = fd;
+            return 0;
+        default:
+            WK_CHECK_WITH_ASSERT(0, "Unexpected flags");
+            return EINVAL;
         }
     }
 
-    void DefaultSubProcess::process_child_init(std::vector<std::array<int, 2>> pipes, int error_fd) {
+    void DefaultSubProcess::process_child_init(std::vector<std::array<int, 2>> pipes, int error_fd)
+    {
         sigset_t set;
         int close_fd;
         int use_fd;
@@ -176,45 +193,51 @@ namespace wukong::utils {
         if (options.flags & DETACHED)
             setsid();
 
-        if (options.flags & SET_MEMORY) {
-
+        if (options.flags & SET_MEMORY)
+        {
         }
-        if (options.flags & SET_CPUS) {
-
+        if (options.flags & SET_CPUS)
+        {
         }
 
-        int pipes_count = (int) pipes.size();
+        int pipes_count = (int)pipes.size();
 
         /* First duplicate low numbered fds, since it's not safe to duplicate them,
          * they could get replaced. Example: swapping stdout and stderr; without
          * this fd 2 (stderr) would be duplicated into fd 1, thus making both
          * stdout and stderr go to the same fd, which was not the intention. */
-        for (fd = 0; fd < pipes_count; fd++) {
+        for (fd = 0; fd < pipes_count; fd++)
+        {
             use_fd = pipes[fd][1];
             if (use_fd < 0 || use_fd >= fd)
                 continue;
             pipes[fd][1] = fcntl(use_fd, F_DUPFD, pipes_count);
-            if (pipes[fd][1] == -1) {
+            if (pipes[fd][1] == -1)
+            {
                 write_2_fd(error_fd, errno);
                 _exit(127);
             }
         }
 
-        for (fd = 0; fd < pipes_count; fd++) {
+        for (fd = 0; fd < pipes_count; fd++)
+        {
             close_fd = pipes[fd][0];
-            use_fd = pipes[fd][1];
+            use_fd   = pipes[fd][1];
 
-            if (use_fd < 0) {
+            if (use_fd < 0)
+            {
                 if (fd >= 3)
                     continue;
-                else {
+                else
+                {
                     /* redirect stdin, stdout and stderr to /dev/nullptr even if UV_IGNORE is
                      * set
                      */
-                    use_fd = open("/dev/nullptr", fd == 0 ? O_RDONLY : O_RDWR);
+                    use_fd   = open("/dev/nullptr", fd == 0 ? O_RDONLY : O_RDWR);
                     close_fd = use_fd;
 
-                    if (use_fd < 0) {
+                    if (use_fd < 0)
+                    {
                         write_2_fd(error_fd, errno);
                         _exit(127);
                     }
@@ -226,7 +249,8 @@ namespace wukong::utils {
             else
                 fd = ::dup2(use_fd, fd);
 
-            if (fd == -1) {
+            if (fd == -1)
+            {
                 write_2_fd(error_fd, errno);
                 _exit(127);
             }
@@ -238,20 +262,23 @@ namespace wukong::utils {
                 ::close(close_fd);
         }
 
-        for (fd = 0; fd < pipes_count; fd++) {
+        for (fd = 0; fd < pipes_count; fd++)
+        {
             use_fd = pipes[fd][1];
 
             if (use_fd >= pipes_count)
                 ::close(use_fd);
         }
 
-        if (!options.cwd.empty() && chdir(options.cwd.c_str())) {
+        if (!options.cwd.empty() && chdir(options.cwd.c_str()))
+        {
             write_2_fd(error_fd, errno);
             SPDLOG_ERROR("change Work Dir failed");
             _exit(127);
         }
 
-        if (options.flags & (SET_UID | SET_GID)) {
+        if (options.flags & (SET_UID | SET_GID))
+        {
             /* When dropping privileges from root, the `setgroups` call will
              * remove any extraneous groups. If we don't call this, then
              * even though our uid has dropped, we may still have groups
@@ -262,25 +289,30 @@ namespace wukong::utils {
             setgroups(0, nullptr);
         }
 
-        if ((options.flags & SET_GID) && setgid(options.gid)) {
+        if ((options.flags & SET_GID) && setgid(options.gid))
+        {
             write_2_fd(error_fd, errno);
             _exit(127);
         }
 
-        if ((options.flags & SET_UID) && setuid(options.uid)) {
+        if ((options.flags & SET_UID) && setuid(options.uid))
+        {
             write_2_fd(error_fd, errno);
             _exit(127);
         }
 
-        std::vector<char *> env;
-        if (!options.env.empty()) {
-            char **env_ptr = environ;
-            while (*env_ptr != nullptr) {
+        std::vector<char*> env;
+        if (!options.env.empty())
+        {
+            char** env_ptr = environ;
+            while (*env_ptr != nullptr)
+            {
                 env.emplace_back(*env_ptr);
                 env_ptr++;
             }
-            for (const auto &item: options.env) {
-                env.emplace_back(const_cast<char *>(item.c_str()));
+            for (const auto& item : options.env)
+            {
+                env.emplace_back(const_cast<char*>(item.c_str()));
             }
             env.emplace_back(nullptr);
             environ = env.data();
@@ -291,13 +323,14 @@ namespace wukong::utils {
          * whether RT signals are enabled.  We are not allowed to touch
          * RT signal handlers, glibc uses them internally.
          */
-        for (n = 1; n < 32; n += 1) {
+        for (n = 1; n < 32; n += 1)
+        {
             if (n == SIGKILL || n == SIGSTOP)
-                continue;  /* Can't be changed. */
+                continue; /* Can't be changed. */
 
 #if defined(__HAIKU__)
             if (n == SIGKILLTHR)
-      continue;  /* Can't be changed. */
+                continue; /* Can't be changed. */
 #endif
 
             if (SIG_ERR != signal(n, SIG_DFL))
@@ -311,14 +344,16 @@ namespace wukong::utils {
         sigemptyset(&set);
         err = pthread_sigmask(SIG_SETMASK, &set, nullptr);
 
-        if (err != 0) {
+        if (err != 0)
+        {
             write_2_fd(error_fd, err);
             _exit(127);
         }
 
-        std::vector<char *> args;
-        for (const auto &item: options.args) {
-            args.emplace_back(const_cast<char *>(item.c_str()));
+        std::vector<char*> args;
+        for (const auto& item : options.args)
+        {
+            args.emplace_back(const_cast<char*>(item.c_str()));
         }
         args.emplace_back(nullptr);
 

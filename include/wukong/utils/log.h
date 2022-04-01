@@ -5,38 +5,43 @@
 #ifndef WUKONG_LOG_H
 #define WUKONG_LOG_H
 
-#include <boost/filesystem.hpp>
 #include <boost/dll.hpp>
+#include <boost/filesystem.hpp>
 
 /// SPDLOG_ACTIVE_LEVEL 是spdlog自己宏, 指定了使用spflog的宏函数输出的时候, 显示那一级别的日志信息
 #ifdef NO_DEBUG
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO   // 不显示DEBUG的信息
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO // 不显示DEBUG的信息
 #else
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE  // 显示全部信息
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE // 显示全部信息
 #endif
 /// 对于SPDLOG_ACTIVE_LEVEL的配置需要在spdlog头文件之前, 这样才能覆盖其配置
 #include <spdlog/spdlog.h>
 
-#define CHECK_MIN_LEVEL(level)                                          \
-    if (SPDLOG_ACTIVE_LEVEL > (level) )                                  \
-        SPDLOG_WARN(                                                    \
-        "Logging set to trace but minimum log level set too high ({})", \
-        SPDLOG_ACTIVE_LEVEL);
+#define CHECK_MIN_LEVEL(level)                                              \
+    if (SPDLOG_ACTIVE_LEVEL > (level))                                      \
+        SPDLOG_WARN(                                                        \
+            "Logging set to trace but minimum log level set too high ({})", \
+            SPDLOG_ACTIVE_LEVEL);
 
 #define WK_CHECK_WITH_ASSERT(condition, msg) \
-do{                                     \
-    bool check = (condition);           \
-    if(check) break;                    \
-    WK_CHECK(check,msg);                \
-    assert(false);                      \
-}while(false)
+    do                                       \
+    {                                        \
+        bool check = (condition);            \
+        if (check)                           \
+            break;                           \
+        WK_CHECK(check, msg);                \
+        assert(false);                       \
+    } while (false)
 
-#define WK_CHECK(condition, msg)        \
-do {                                    \
-    if(!(condition))SPDLOG_ERROR((msg));\
-} while(false)
+#define WK_CHECK(condition, msg) \
+    do                           \
+    {                            \
+        if (!(condition))        \
+            SPDLOG_ERROR((msg)); \
+    } while (false)
 
-namespace wukong::utils {
+namespace wukong::utils
+{
     void initLog(std::string exec_name = "");
 
     void printAllENV();

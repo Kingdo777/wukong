@@ -5,11 +5,12 @@
 #include <cstdio>
 #include <string>
 
-
-std::string faas_ping() {
+std::string faas_ping()
+{
     return "pong";
 }
 
-void faas_main() {
+void faas_main()
+{
     printf("hello wukong");
 }

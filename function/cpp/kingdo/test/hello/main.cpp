@@ -3,11 +3,12 @@
 //
 
 #include <cstdio>
-#include <string>
 #include <faas/function-interface.h>
+#include <string>
 
-void faas_main(FaasHandle *handle) {
-    auto input = faas_getInput(handle);
+void faas_main(FaasHandle* handle)
+{
+    auto input  = faas_getInput(handle);
     auto result = fmt::format("Hello , {}", input);
     faas_setOutput(handle, result);
 }

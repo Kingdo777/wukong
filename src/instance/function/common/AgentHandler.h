@@ -6,39 +6,43 @@
 #define WUKONG_AGENT_HANDLER_H
 
 #include <faas/function-interface.h>
-#include <wukong/proto/proto.h>
-#include <pistache/reactor.h>
 #include <pistache/http.h>
+#include <pistache/reactor.h>
+#include <wukong/proto/proto.h>
 
 class Agent;
 
-class AgentHandler : public Pistache::Aio::Handler {
+class AgentHandler : public Pistache::Aio::Handler
+{
 public:
-PROTOTYPE_OF(Pistache::Aio::Handler, AgentHandler)
+    PROTOTYPE_OF(Pistache::Aio::Handler, AgentHandler)
 
-    explicit AgentHandler(Agent *agent_) : agent(agent_) {};
+    explicit AgentHandler(Agent* agent_)
+        : agent(agent_) {};
 
-    AgentHandler(const AgentHandler &handler) : agent(handler.agent) {}
+    AgentHandler(const AgentHandler& handler)
+        : agent(handler.agent)
+    { }
 
-    void onReady(const Pistache::Aio::FdSet &fds) override;
+    void onReady(const Pistache::Aio::FdSet& fds) override;
 
-    void registerPoller(Pistache::Polling::Epoll &poller) override;
+    void registerPoller(Pistache::Polling::Epoll& poller) override;
 
-    struct MessageEntry {
-        explicit MessageEntry(wukong::proto::Message msg_) : msg(std::move(msg_)) {}
+    struct MessageEntry
+    {
+        explicit MessageEntry(wukong::proto::Message msg_)
+            : msg(std::move(msg_))
+        { }
         wukong::proto::Message msg;
     };
 
     void putMessage(wukong::proto::Message msg);
 
 private:
-
     void handlerMessage();
 
-    Agent *agent;
+    Agent* agent;
     Pistache::PollableQueue<MessageEntry> messageQueue;
-
 };
-
 
 #endif //WUKONG_AGENT_HANDLER_H

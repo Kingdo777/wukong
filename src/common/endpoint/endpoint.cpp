@@ -5,23 +5,26 @@
 #include <wukong/endpoint/endpoint.h>
 #include <wukong/utils/log.h>
 
-namespace wukong::endpoint {
-    Endpoint::Endpoint(const std::string &name, const std::shared_ptr<Pistache::Http::Handler> &handler, int port) :
-            endpointPort(port),
-            endpoint(Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(endpointPort))) {
+namespace wukong::endpoint
+{
+    Endpoint::Endpoint(const std::string& name, const std::shared_ptr<Pistache::Http::Handler>& handler, int port)
+        : endpointPort(port)
+        , endpoint(Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(endpointPort)))
+    {
         if (handler != nullptr)
             endpointHandler = handler;
         endpointName = name;
     }
 
-    void Endpoint::start() {
+    void Endpoint::start()
+    {
         // Configure endpoint
         auto opts = Pistache::Http::Endpoint::options()
-                .threads(endpointThreadCount)
-                .bodyTimeout(endpointBodyTimeout)
-                .headerTimeout(endpointHeaderTimeout)
-                .backlog(256)
-                .flags(Pistache::Tcp::Options::ReuseAddr);
+                        .threads(endpointThreadCount)
+                        .bodyTimeout(endpointBodyTimeout)
+                        .headerTimeout(endpointHeaderTimeout)
+                        .backlog(256)
+                        .flags(Pistache::Tcp::Options::ReuseAddr);
 
         endpoint.init(opts);
 
@@ -36,7 +39,8 @@ namespace wukong::endpoint {
                     endpointThreadCount);
     }
 
-    void Endpoint::stop() {
+    void Endpoint::stop()
+    {
         SPDLOG_INFO("Shutting down {} endpoint ", endpointName);
         endpoint.shutdown();
     }

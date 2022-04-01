@@ -5,40 +5,41 @@
 #ifndef WUKONG_AGENT_H
 #define WUKONG_AGENT_H
 
-#include <wukong/utils/log.h>
-#include <wukong/utils/os.h>
-#include <wukong/utils/dl.h>
-#include <wukong/utils/config.h>
-#include <wukong/utils/redis.h>
-#include <wukong/proto/proto.h>
+#include <boost/filesystem.hpp>
 #include <pistache/async.h>
 #include <pistache/reactor.h>
-#include <boost/filesystem.hpp>
+#include <wukong/proto/proto.h>
+#include <wukong/utils/config.h>
+#include <wukong/utils/dl.h>
+#include <wukong/utils/log.h>
+#include <wukong/utils/os.h>
+#include <wukong/utils/redis.h>
 
-#include <utility>
 #include "AgentHandler.h"
+#include <utility>
 
-typedef void(*Faas_Main)(FaasHandle *);
+typedef void (*Faas_Main)(FaasHandle*);
 
-class Agent {
+class Agent
+{
 public:
-
     enum Type {
         C_PP,
         Python,
         Storage
     };
 
-    struct Options {
+    struct Options
+    {
         friend class Agent;
 
         Options();
 
         static Options options();
 
-        Options &threads(int val);
+        Options& threads(int val);
 
-        Options &type(Type val);
+        Options& type(Type val);
 
     private:
         int threads_;
@@ -50,7 +51,7 @@ public:
 
     Agent();
 
-    void init(Options &options);
+    void init(Options& options);
 
     void set_handler(std::shared_ptr<AgentHandler> handler);
 
@@ -58,17 +59,16 @@ public:
 
     void shutdown();
 
-    void doExec(FaasHandle *h);
+    void doExec(FaasHandle* h);
 
     void finishExec(wukong::proto::Message msg);
 
 private:
-
     void onRunning() const;
 
     void onFailed() const;
 
-    void loadFunc(Options &options);
+    void loadFunc(Options& options);
 
     std::shared_ptr<AgentHandler> pickOneHandler();
 

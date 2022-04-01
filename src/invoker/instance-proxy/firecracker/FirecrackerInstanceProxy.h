@@ -5,10 +5,8 @@
 #ifndef WUKONG_FIRECRACKERINSTANCEPROXY_H
 #define WUKONG_FIRECRACKERINSTANCEPROXY_H
 
-
-class FirecrackerInstanceProxy {
-
+class FirecrackerInstanceProxy
+{
 };
-
 
 #endif //WUKONG_FIRECRACKERINSTANCEPROXY_H

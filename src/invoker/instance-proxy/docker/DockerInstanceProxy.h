@@ -5,10 +5,8 @@
 #ifndef WUKONG_DOCKERINSTANCEPROXY_H
 #define WUKONG_DOCKERINSTANCEPROXY_H
 
-
-class DockerInstanceProxy {
-
+class DockerInstanceProxy
+{
 };
-
 
 #endif //WUKONG_DOCKERINSTANCEPROXY_H

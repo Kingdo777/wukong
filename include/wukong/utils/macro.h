@@ -1,6 +1,6 @@
 #pragma once
 
-#include <linux/limits.h>  // for PIPE_BUF
+#include <linux/limits.h> // for PIPE_BUF
 
 // Put this in the declarations for a class to be uncopyable.
 #define DISALLOW_COPY(TypeName) \
@@ -23,11 +23,11 @@
     DISALLOW_COPY_AND_ASSIGN(TypeName)
 
 #define WUKONG_PREDICT_FALSE(x) __builtin_expect(x, 0)
-#define WUKONG_PREDICT_TRUE(x)  __builtin_expect(false || (x), true)
+#define WUKONG_PREDICT_TRUE(x) __builtin_expect(false || (x), true)
 
 // We're always on x86_64
 #define WUKONG_CACHE_LINE_SIZE 64
-#define WUKONG_PAGE_SIZE       4096
+#define WUKONG_PAGE_SIZE 4096
 
 #ifndef WUKONG_FILE_CREAT_MODE
 #define WUKONG_FILE_CREAT_MODE 0664

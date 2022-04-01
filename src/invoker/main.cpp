@@ -8,9 +8,10 @@
 
 #include "invoker.h"
 
-int main() {
-//    ProcessInstanceProxy proxy;
-//    proxy.test();
+int main()
+{
+    //    ProcessInstanceProxy proxy;
+    //    proxy.test();
     wukong::utils::initLog();
     wukong::utils::Config::print();
     SIGNAL_HANDLER()

@@ -9,7 +9,8 @@
 
 using namespace std;
 
-int main() {
-    vector<std::array<int ,2>> pipes;
-    pipes.push_back({1, 2});
+int main()
+{
+    vector<std::array<int, 2>> pipes;
+    pipes.push_back({ 1, 2 });
 }

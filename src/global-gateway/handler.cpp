@@ -2,24 +2,25 @@
 // Created by kingdo on 2022/3/4.
 //
 
-#include <wukong/utils/timing.h>
 #include <wukong/proto/proto.h>
+#include <wukong/utils/timing.h>
 #include <wukong/utils/uuid.h>
 
-#include <utility>
 #include "endpoint.h"
+#include <utility>
 
-void GlobalGatewayHandler::onRequest(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
+void GlobalGatewayHandler::onRequest(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
+{
     // Very permissive CORS
     response.headers().add<Pistache::Http::Header::AccessControlAllowOrigin>(
-            "*");
+        "*");
     response.headers().add<Pistache::Http::Header::AccessControlAllowMethods>(
-            "GET,POST,PUT,OPTIONS");
+        "GET,POST,PUT,OPTIONS");
     response.headers().add<Pistache::Http::Header::AccessControlAllowHeaders>(
-            "User-Agent,Content-Type");
+        "User-Agent,Content-Type");
     // Text response type
     response.headers().add<Pistache::Http::Header::ContentType>(
-            Pistache::Http::Mime::MediaType("text/plain"));
+        Pistache::Http::Mime::MediaType("text/plain"));
     // 目前pistache的timeout设计上存在无法解决的Bug，首先当前代码，timeout不可能被触发，因为触发只能通过执行处理请求的线程处理其timefd，
     // 但是在当前onRequest()执行完成之前，epoll都不会感知到timefd超时，当onRequest()结束后，response会被释放，届时将同时销毁response
     // 所拥有的timeout，导致其不会执行timefd的处理函数
@@ -31,32 +32,37 @@ void GlobalGatewayHandler::onRequest(const Pistache::Http::Request &request, Pis
     // 但是至少应确保，超时后要返回超时信息，因此，我认为需要一个专门的线程来处理超时
     // response.timeoutAfter(std::chrono::milliseconds(1000));
 
-    switch (request.method()) {
-        case Pistache::Http::Method::Get:
-            handleGetReq(request, std::move(response));
-            break;
-        case Pistache::Http::Method::Post:
-            handlePostReq(request, std::move(response));
-            break;
-        default:
-            response.send(Pistache::Http::Code::Method_Not_Allowed, "Only GET && POST Method Allowed\n");
-            break;
+    switch (request.method())
+    {
+    case Pistache::Http::Method::Get:
+        handleGetReq(request, std::move(response));
+        break;
+    case Pistache::Http::Method::Post:
+        handlePostReq(request, std::move(response));
+        break;
+    default:
+        response.send(Pistache::Http::Code::Method_Not_Allowed, "Only GET && POST Method Allowed\n");
+        break;
     }
 }
 
-void GlobalGatewayHandler::onTimeout(const Pistache::Http::Request &, Pistache::Http::ResponseWriter response) {
+void GlobalGatewayHandler::onTimeout(const Pistache::Http::Request&, Pistache::Http::ResponseWriter response)
+{
     response
-            .send(Pistache::Http::Code::Request_Timeout, "Timeout")
-            .then([=](ssize_t) {}, PrintException());
+        .send(Pistache::Http::Code::Request_Timeout, "Timeout")
+        .then([=](ssize_t) {}, PrintException());
 }
 
-void
-GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
+void GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
+{
 
-    if (request.resource() == "/ping") {
+    if (request.resource() == "/ping")
+    {
         SPDLOG_DEBUG("GlobalGatewayHandler received ping request");
         response.send(Pistache::Http::Code::Ok, "PONG");
-    } else {
+    }
+    else
+    {
         wukong::proto::Message msg;
         msg.set_id(wukong::utils::uuid());
         msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
@@ -79,67 +85,83 @@ GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request &request, Pista
     }
 }
 
-void
-GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response) {
+void GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
+{
 
-    const std::string &uri = request.resource();
-    if (uri.starts_with("/invoker")) {
-        if (uri == "/invoker/register") {
+    const std::string& uri = request.resource();
+    if (uri.starts_with("/invoker"))
+    {
+        if (uri == "/invoker/register")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /invoker/register request");
             endpoint()->lb->handleInvokerRegister(request.address().host(), request.body(), std::move(response));
             return;
         }
-        if (request.resource() == "/invoker/info") {
+        if (request.resource() == "/invoker/info")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received get_invokers_info request");
             endpoint()->lb->handleInvokerInfo(std::move(response));
             return;
         }
-    } else if (uri.starts_with("/user")) {
-        if (uri == "/user/register") {
+    }
+    else if (uri.starts_with("/user"))
+    {
+        if (uri == "/user/register")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /user/register request");
             wukong::proto::User user = wukong::proto::jsonToUser(request.body());
             endpoint()->lb->handleUserRegister(user, std::move(response));
             return;
         }
-        if (uri == "/user/delete") {
+        if (uri == "/user/delete")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /user/delete request");
             wukong::proto::User user = wukong::proto::jsonToUser(request.body());
             endpoint()->lb->handleUserDelete(user, std::move(response));
             return;
         }
-        if (uri == "/user/info") {
+        if (uri == "/user/info")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /user/info request");
-            const auto &cookies = request.cookies();
-            auto username = cookies.get("user").value;
+            const auto& cookies = request.cookies();
+            auto username       = cookies.get("user").value;
             endpoint()->lb->handleUserInfo(username, std::move(response));
             return;
         }
-    } else if (uri.starts_with("/application")) {
-        if (uri == "/application/create") {
+    }
+    else if (uri.starts_with("/application"))
+    {
+        if (uri == "/application/create")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /application/create request");
             wukong::proto::Application application = wukong::proto::jsonToApplication(request.body());
             endpoint()->lb->handleAppCreate(application, std::move(response));
             return;
         }
-        if (uri == "/application/delete") {
+        if (uri == "/application/delete")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /application/delete request");
             wukong::proto::Application application = wukong::proto::jsonToApplication(request.body());
             endpoint()->lb->handleAppDelete(application, std::move(response));
             return;
         }
-        if (uri == "/application/info") {
+        if (uri == "/application/info")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /application/info request");
-            const auto &cookies = request.cookies();
-            auto username = cookies.get("user").value;
-            auto appname = cookies.get("application").value;
+            const auto& cookies = request.cookies();
+            auto username       = cookies.get("user").value;
+            auto appname        = cookies.get("application").value;
             endpoint()->lb->handleAppInfo(username, appname, std::move(response));
             return;
         }
-    } else if (uri.starts_with("/function")) {
-        if (uri == "/function/register") {
+    }
+    else if (uri.starts_with("/function"))
+    {
+        if (uri == "/function/register")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /function/register request");
             wukong::proto::Function function;
-            const auto &cookies = request.cookies();
+            const auto& cookies = request.cookies();
             function.set_user(cookies.get("user").value);
             function.set_application(cookies.get("application").value);
             function.set_functionname(cookies.get("function").value);
@@ -152,25 +174,26 @@ GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request &request, Pist
             endpoint()->lb->handleFuncRegister(function, request.body(), std::move(response));
             return;
         }
-        if (uri == "/function/delete") {
-            const auto &cookies = request.cookies();
-            auto username = cookies.get("user").value;
-            auto appname = cookies.get("application").value;
-            auto funcname = cookies.get("function").value;
+        if (uri == "/function/delete")
+        {
+            const auto& cookies = request.cookies();
+            auto username       = cookies.get("user").value;
+            auto appname        = cookies.get("application").value;
+            auto funcname       = cookies.get("function").value;
             endpoint()->lb->handleFuncDelete(username, appname, funcname, std::move(response));
             return;
         }
-        if (uri == "/function/info") {
+        if (uri == "/function/info")
+        {
             SPDLOG_DEBUG("GlobalGatewayHandler received /function/info request");
-            const auto &cookies = request.cookies();
-            auto username = cookies.get("user").value;
-            auto appname = cookies.get("application").value;
-            auto funcname = cookies.get("function").value;
+            const auto& cookies = request.cookies();
+            auto username       = cookies.get("user").value;
+            auto appname        = cookies.get("application").value;
+            auto funcname       = cookies.get("function").value;
             endpoint()->lb->handleFuncInfo(username, appname, funcname, std::move(response));
             return;
         }
     }
     SPDLOG_WARN(fmt::format("GlobalGatewayHandler received Unsupported request ： {}", uri));
     response.send(Pistache::Http::Code::Bad_Request, fmt::format("Unsupported request : {}", uri));
-
 }

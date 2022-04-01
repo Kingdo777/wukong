@@ -5,8 +5,10 @@
 #include "AgentHandler.h"
 #include "Agent.h"
 
-void AgentHandler::handlerMessage() {
-    for (;;) {
+void AgentHandler::handlerMessage()
+{
+    for (;;)
+    {
         auto entry = messageQueue.popSafe();
         if (!entry)
             break;
@@ -17,19 +19,24 @@ void AgentHandler::handlerMessage() {
     }
 }
 
-void AgentHandler::putMessage(wukong::proto::Message msg) {
+void AgentHandler::putMessage(wukong::proto::Message msg)
+{
     MessageEntry entry(std::move(msg));
     messageQueue.push(std::move(entry));
 }
 
-void AgentHandler::onReady(const Pistache::Aio::FdSet &fds) {
-    for (auto fd: fds) {
-        if (fd.getTag() == messageQueue.tag()) {
+void AgentHandler::onReady(const Pistache::Aio::FdSet& fds)
+{
+    for (auto fd : fds)
+    {
+        if (fd.getTag() == messageQueue.tag())
+        {
             handlerMessage();
         }
     }
 }
 
-void AgentHandler::registerPoller(Pistache::Polling::Epoll &poller) {
+void AgentHandler::registerPoller(Pistache::Polling::Epoll& poller)
+{
     messageQueue.bind(poller);
 }

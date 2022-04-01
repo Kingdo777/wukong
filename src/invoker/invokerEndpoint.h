@@ -12,54 +12,59 @@ class Invoker;
 
 class InvokerEndpoint;
 
-class InvokerHandler : public Pistache::Http::Handler {
+class InvokerHandler : public Pistache::Http::Handler
+{
 public:
-HTTP_PROTOTYPE(InvokerHandler)
+    HTTP_PROTOTYPE(InvokerHandler)
 
-    void onRequest(const Pistache::Http::Request & /*request*/, Pistache::Http::ResponseWriter response) override;
+    void onRequest(const Pistache::Http::Request& /*request*/, Pistache::Http::ResponseWriter response) override;
 
-    void onTimeout(const Pistache::Http::Request & /*req*/,
+    void onTimeout(const Pistache::Http::Request& /*req*/,
                    Pistache::Http::ResponseWriter response) override;
 
-    void associateEndpoint(InvokerEndpoint *e_) {
+    void associateEndpoint(InvokerEndpoint* e_)
+    {
         this->e = e_;
     }
 
-    InvokerEndpoint *endpoint() {
+    InvokerEndpoint* endpoint()
+    {
         return this->e;
     }
 
 private:
-    InvokerEndpoint *e;
+    InvokerEndpoint* e;
 
-    void handleGetReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response);
+    void handleGetReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response);
 
-    void handlePostReq(const Pistache::Http::Request &request, Pistache::Http::ResponseWriter response);
+    void handlePostReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response);
 };
 
-class InvokerEndpoint : public wukong::endpoint::Endpoint {
+class InvokerEndpoint : public wukong::endpoint::Endpoint
+{
 public:
-
     typedef wukong::endpoint::Endpoint BASE;
 
-    explicit InvokerEndpoint(const std::string &name = "invoker-endpoint",
-                             const std::shared_ptr<InvokerHandler> &handler = std::make_shared<InvokerHandler>());
+    explicit InvokerEndpoint(const std::string& name                        = "invoker-endpoint",
+                             const std::shared_ptr<InvokerHandler>& handler = std::make_shared<InvokerHandler>());
 
     void start() override;
 
     void stop() override;
 
-    void associateEndpoint(Invoker *i) {
+    void associateEndpoint(Invoker* i)
+    {
         this->ink = i;
     }
 
-    Invoker *invoker() {
+    Invoker* invoker()
+    {
         WK_CHECK_WITH_ASSERT(ink != nullptr, "invoker is NULL");
         return ink;
     }
 
 private:
-    Invoker *ink = nullptr;
+    Invoker* ink = nullptr;
 };
 
 #endif //WUKONG_INVOKERENDPOINT_H

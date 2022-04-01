@@ -5,7 +5,8 @@
 #include "Agent.h"
 #include <wukong/utils/signal-tool.h>
 
-int main() {
+int main()
+{
     wukong::utils::initLog();
     SPDLOG_INFO("-------------------worker func config---------------------");
     wukong::utils::Config::print();
@@ -19,5 +20,4 @@ int main() {
     agent.shutdown();
     wukong::utils::Timing::printTimerTotals();
     return 0;
-
 }

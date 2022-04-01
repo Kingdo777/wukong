@@ -7,7 +7,8 @@
 
 #include <random>
 
-namespace wukong::utils {
+namespace wukong::utils
+{
     std::string randomString(int len);
 }
 #endif //WUKONG_RADOM_H

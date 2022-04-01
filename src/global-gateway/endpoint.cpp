@@ -7,15 +7,17 @@
 #include <utility>
 
 GlobalGatewayEndpoint::GlobalGatewayEndpoint(
-        const std::string &name,
-        std::shared_ptr<LoadBalance> lb_,
-        const std::shared_ptr<GlobalGatewayHandler> &handler) :
-        Endpoint(name, handler),
-        lb(std::move(lb_)) {
+    const std::string& name,
+    std::shared_ptr<LoadBalance> lb_,
+    const std::shared_ptr<GlobalGatewayHandler>& handler)
+    : Endpoint(name, handler)
+    , lb(std::move(lb_))
+{
     handler->associateEndpoint(this);
 }
 
-void GlobalGatewayEndpoint::start() {
+void GlobalGatewayEndpoint::start()
+{
     lb->start();
 
     //TODO
@@ -23,7 +25,8 @@ void GlobalGatewayEndpoint::start() {
     BASE::start();
 }
 
-void GlobalGatewayEndpoint::stop() {
+void GlobalGatewayEndpoint::stop()
+{
     // TODO
 
     BASE::stop();

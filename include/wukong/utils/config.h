@@ -5,22 +5,24 @@
 #ifndef WUKONG_CONFIG_H
 #define WUKONG_CONFIG_H
 
-#include <wukong/utils/env.h>
-#include <string>
 #include <chrono>
+#include <string>
+#include <wukong/utils/env.h>
 
-#define DEFAULT_ENDPOINT_PORT       8080
-#define DEFAULT_HEADER_TIMEOUT      300
-#define DEFAULT_BODY_TIMEOUT        300
-#define DEFAULT_REQUEST_TIMEOUT     300
+#define DEFAULT_ENDPOINT_PORT 8080
+#define DEFAULT_HEADER_TIMEOUT 300
+#define DEFAULT_BODY_TIMEOUT 300
+#define DEFAULT_REQUEST_TIMEOUT 300
 
-#define DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST    8
+#define DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST 8
 
 /// pause的实例，超时后被移除
-#define INSTANCE_PAUSE_TIMEOUT (60*60)
+#define INSTANCE_PAUSE_TIMEOUT (60 * 60)
 
-namespace wukong::utils {
-    class Config {
+namespace wukong::utils
+{
+    class Config
+    {
     public:
         static std::string LogLevel() { return logLevel; };
 
@@ -63,7 +65,6 @@ namespace wukong::utils {
         static uint64_t InstanceFunctionReadBufferSize() { return insFuncReadBufferSize; };
 
         static int InstanceFunctionDefaultWriteFD() { return insFuncWriteFD; };
-
 
         static void print();
 
@@ -110,8 +111,6 @@ namespace wukong::utils {
         const static int insFuncReadFD;
         const static uint64_t insFuncReadBufferSize;
         const static int insFuncWriteFD;
-
-
     };
 }
 

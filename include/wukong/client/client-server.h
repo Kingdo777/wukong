@@ -7,52 +7,59 @@
 
 #include <pistache/client.h>
 
-namespace wukong::client {
+namespace wukong::client
+{
 
     class ClientServer;
 
-    class ClientHandler : public Pistache::Http::Transport {
-    PROTOTYPE_OF(Pistache::Aio::Handler, ClientHandler)
+    class ClientHandler : public Pistache::Http::Transport
+    {
+        PROTOTYPE_OF(Pistache::Aio::Handler, ClientHandler)
 
     public:
         typedef Pistache::Http::Transport Base;
 
         ClientHandler() = delete;
 
-        ClientHandler(const ClientHandler &ch) = default;
+        ClientHandler(const ClientHandler& ch) = default;
 
-        explicit ClientHandler(ClientServer *client_) : client(client_) {}
+        explicit ClientHandler(ClientServer* client_)
+            : client(client_)
+        { }
 
         Pistache::Async::Promise<Pistache::Http::Response>
-        post(const std::string &uri, const std::string &data,
+        post(const std::string& uri, const std::string& data,
              std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
 
         Pistache::Async::Promise<Pistache::Http::Response>
-        get(const std::string &uri, std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
+        get(const std::string& uri, std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
 
     protected:
-        void onReady(const Pistache::Aio::FdSet &fds) override;
+        void onReady(const Pistache::Aio::FdSet& fds) override;
 
-        void registerPoller(Pistache::Polling::Epoll &poller) override;
+        void registerPoller(Pistache::Polling::Epoll& poller) override;
 
     private:
-        ClientServer *client = nullptr;
-
+        ClientServer* client = nullptr;
     };
 
-    class ClientServer : public Pistache::Http::Client {
+    class ClientServer : public Pistache::Http::Client
+    {
         typedef Pistache::Http::Client Base;
+
     public:
         ClientServer() = default;
 
-        void start(const Options &options);
+        void start(const Options& options);
 
-        void stop() {
+        void stop()
+        {
             if (status != Shutdown)
                 Pistache::Http::Client::shutdown();
         }
 
-        bool isStarted() const {
+        bool isStarted() const
+        {
             return status == Started;
         }
 
@@ -61,7 +68,6 @@ namespace wukong::client {
         void setHandler(std::shared_ptr<Pistache::Aio::Handler> handler_);
 
     private:
-
         enum ClientServerStatus {
             Created,
             Started,
@@ -72,7 +78,7 @@ namespace wukong::client {
 
         std::shared_ptr<Pistache::Aio::Handler> handler = std::make_shared<ClientHandler>(this);
 
-        std::atomic<uint64_t> handlerIndex{0};
+        std::atomic<uint64_t> handlerIndex { 0 };
     };
 }
 

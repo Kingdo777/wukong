@@ -5,11 +5,11 @@
 #ifndef WUKONG_INVOKER_H
 #define WUKONG_INVOKER_H
 
+#include "instance-proxy/InstanceProxy.h"
+#include "invokerEndpoint.h"
+#include <wukong/client/client-server.h>
 #include <wukong/proto/proto.h>
 #include <wukong/utils/locks.h>
-#include <wukong/client/client-server.h>
-#include "invokerEndpoint.h"
-#include "instance-proxy/InstanceProxy.h"
 
 #if INSTANCE_PROXY == FIRECRACKER
 #include "instance-proxy/firecracker/FirecrackerInstanceProxy.h"
@@ -24,10 +24,10 @@
 #define PROXY_CLASS ProcessInstanceProxy
 #endif
 
-class Invoker {
+class Invoker
+{
 
 public:
-
     Invoker();
 
     void start();
@@ -38,14 +38,14 @@ public:
 
     std::string toInvokerJson() const;
 
-#define FUNCTION_INDEX(username, appname, funcname) fmt::format("{}#{}#{}",username,appname,funcname)
-#define APP_INDEX(username, appname) fmt::format("{}#{}",username,appname)
+#define FUNCTION_INDEX(username, appname, funcname) fmt::format("{}#{}#{}", username, appname, funcname)
+#define APP_INDEX(username, appname) fmt::format("{}#{}", username, appname)
 
-    void startupInstance(const wukong::proto::Application &app, Pistache::Http::ResponseWriter response);
+    void startupInstance(const wukong::proto::Application& app, Pistache::Http::ResponseWriter response);
 
-    void shutdownInstance(const wukong::proto::Application &app, Pistache::Http::ResponseWriter response) {
+    void shutdownInstance(const wukong::proto::Application& app, Pistache::Http::ResponseWriter response)
+    {
         wukong::utils::UniqueLock lock(proxy_mutex);
-
     }
 
 private:
@@ -56,13 +56,13 @@ private:
     };
 
     InvokerStatus status = Uninitialized;
-    bool registered = false;
+    bool registered      = false;
 
     InvokerEndpoint endpoint;
 
     wukong::client::ClientServer cs;
 
-    std::pair<bool, std::string> register2LB(const std::string &invokerJson);
+    std::pair<bool, std::string> register2LB(const std::string& invokerJson);
 
     std::unordered_map<std::string, std::shared_ptr<PROXY_CLASS>> proxyMap;
     std::mutex proxy_mutex;

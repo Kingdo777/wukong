@@ -5,13 +5,14 @@
 #ifndef WUKONG_UUID_H
 #define WUKONG_UUID_H
 
-#include <cstdint>
 #include <atomic>
+#include <cstdint>
 #include <mutex>
 
 #define UUID_LEN 20
 
-namespace wukong::utils {
+namespace wukong::utils
+{
     uint32_t uuid();
 }
 
