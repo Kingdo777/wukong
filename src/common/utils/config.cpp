@@ -4,92 +4,37 @@
 
 #include <wukong/utils/config.h>
 #include <wukong/utils/log.h>
+#include <wukong/utils/macro.h>
 #include <wukong/utils/os.h>
 #include <wukong/utils/uuid.h>
 
 namespace wukong::utils
 {
 
-    const std::string Config::logLevel                        = getEnvVar(/* NOLINT */
-                                                   "LOG_LEVEL",
-                                                   "trace");
-    const int Config::endpointPort                            = getIntEnvVar(/* NOLINT */
-                                                  "ENDPOINT_PORT",
-                                                  DEFAULT_ENDPOINT_PORT);
-    const int Config::endpointNumThreads                      = getIntEnvVar(/* NOLINT */
-                                                        "ENDPOINT_NUM_THREADS",
-                                                        hardware_concurrency());
-    const uint64_t Config::headerTimeout                      = getIntEnvVar(/* NOLINT */
-                                                        "HEADER_TIMEOUT",
-                                                        DEFAULT_HEADER_TIMEOUT);
-    const std::chrono::seconds Config::endpointHeaderTimeout  = std::chrono::seconds(headerTimeout); /* NOLINT */
-    const uint64_t Config::bodyTimeout                        = getIntEnvVar(/* NOLINT */
-                                                      "BODY_TIMEOUT",
-                                                      DEFAULT_BODY_TIMEOUT);
-    const std::chrono::seconds Config::endpointBodyTimeout    = std::chrono::seconds(bodyTimeout); /* NOLINT */
-    const uint64_t Config::requestTimeout                     = getIntEnvVar(/* NOLINT */
-                                                         "REQUEST_TIMEOUT",
-                                                         DEFAULT_REQUEST_TIMEOUT);
-    const std::chrono::seconds Config::endpointRequestTimeout = std::chrono::seconds(requestTimeout); /* NOLINT */
-
-    const int Config::clientNumThreads            = getIntEnvVar(/* NOLINT */
-                                                      "CLIENT_NUM_THREADS",
-                                                      hardware_concurrency());
-    const int Config::clientMaxConnectionsPerHost = getIntEnvVar(/* NOLINT */
-                                                                 "CLIENT_MAX_CONNECTS_PER_HOST",
-                                                                 DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST);
-
-    const int Config::redisPort = getIntEnvVar(/* NOLINT */
-                                               "REDIS_PORT",
-                                               6379);
-
-    const std::string Config::redisHostName = getEnvVar(/* NOLINT */
-                                                        "REDIS_HOSTNAME",
-                                                        "localhost");
-
-    const std::string Config::lbHost = getEnvVar(/* NOLINT */
-                                                 "LB_HOST",
-                                                 "localhost");
-
-    const int Config::lbPort = getIntEnvVar(/* NOLINT */
-                                            "LB_PORT",
-                                            8080);
-
-    const std::string Config::invokerHost = getEnvVar(/* NOLINT */
-                                                      "LB_HOST",
-                                                      "localhost");
-
-    const int Config::invokerPort = getIntEnvVar(/* NOLINT */
-                                                 "LB_PORT",
-                                                 8081);
-
-    const std::string Config::invokerInitID = getEnvVar(/* NOLINT */
-                                                        "INVOKER_INIT_ID",
-                                                        "invoker-" + std::to_string(uuid()));
-
-    const int Config::invokerCPU = getIntEnvVar(/* NOLINT */
-                                                "INVOKER_CPU",
-                                                10 * 1000); ///10个core
-
-    const int Config::invokerMemory = getIntEnvVar(/* NOLINT */
-                                                   "INVOKER_MEMORY",
-                                                   64 * 1024); /// 64G
-
-    const uint64_t Config::pauseTimeout = getIntEnvVar(/* NOLINT */
-                                                       "PAUSE_TIMEOUT",
-                                                       INSTANCE_PAUSE_TIMEOUT); /// 1h
-
-    const int Config::insFuncReadFD = getIntEnvVar(/* NOLINT */
-                                                   "INSTANCE_FUNCTION_DEFAULT_READ_FD",
-                                                   3); /// 3
-
-    const uint64_t Config::insFuncReadBufferSize = getIntEnvVar(/* NOLINT */
-                                                                "INSTANCE_FUNCTION_DEFAULT_READ_BUFFER_SIZE",
-                                                                2048); /// 3
-
-    const int Config::insFuncWriteFD = getIntEnvVar(/* NOLINT */
-                                                    "INSTANCE_FUNCTION_DEFAULT_WRITE_FD",
-                                                    4); /// 4
+    const std::string Config::logLevel                        = getEnvVar("LOG_LEVEL", "trace");
+    const int Config::endpointPort                            = getIntEnvVar("ENDPOINT_PORT", DEFAULT_ENDPOINT_PORT);
+    const int Config::endpointNumThreads                      = getIntEnvVar("ENDPOINT_NUM_THREADS", hardware_concurrency());
+    const uint64_t Config::headerTimeout                      = getIntEnvVar("HEADER_TIMEOUT", DEFAULT_HEADER_TIMEOUT);
+    const std::chrono::seconds Config::endpointHeaderTimeout  = std::chrono::seconds(headerTimeout);
+    const uint64_t Config::bodyTimeout                        = getIntEnvVar("BODY_TIMEOUT", DEFAULT_BODY_TIMEOUT);
+    const std::chrono::seconds Config::endpointBodyTimeout    = std::chrono::seconds(bodyTimeout);
+    const uint64_t Config::requestTimeout                     = getIntEnvVar("REQUEST_TIMEOUT", DEFAULT_REQUEST_TIMEOUT);
+    const std::chrono::seconds Config::endpointRequestTimeout = std::chrono::seconds(requestTimeout);
+    const int Config::clientNumThreads                        = getIntEnvVar("CLIENT_NUM_THREADS", hardware_concurrency());
+    const int Config::clientMaxConnectionsPerHost             = getIntEnvVar("CLIENT_MAX_CONNECTS_PER_HOST", DEFAULT_CLIENT_MAX_CONNECTS_PER_HOST);
+    const int Config::redisPort                               = getIntEnvVar("REDIS_PORT", 6379);
+    const std::string Config::redisHostName                   = getEnvVar("REDIS_HOSTNAME", "localhost");
+    const std::string Config::lbHost                          = getEnvVar("LB_HOST", "localhost");
+    const int Config::lbPort                                  = getIntEnvVar("LB_PORT", 8080);
+    const std::string Config::invokerHost                     = getEnvVar("LB_HOST", "localhost");
+    const int Config::invokerPort                             = getIntEnvVar("LB_PORT", 8081);
+    const std::string Config::invokerInitID                   = getEnvVar("INVOKER_INIT_ID", "invoker-" + std::to_string(uuid()));
+    const int Config::invokerCPU                              = getIntEnvVar("INVOKER_CPU", 10 * 1000); /// 10个core
+    const int Config::invokerMemory                           = getIntEnvVar("INVOKER_MEMORY", 64 * 1024); /// 64G
+    const uint64_t Config::pauseTimeout                       = getIntEnvVar("PAUSE_TIMEOUT", INSTANCE_PAUSE_TIMEOUT); /// 1h
+    const int Config::insFuncReadFD                           = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_READ_FD", 3); /// 3
+    const uint64_t Config::insFuncReadBufferSize              = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_READ_BUFFER_SIZE", WUKONG_MESSAGE_SIZE); /// 3
+    const int Config::insFuncWriteFD                          = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 4); /// 4
 
     void Config::print()
     {

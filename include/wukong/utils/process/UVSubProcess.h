@@ -5,6 +5,7 @@
 #ifndef WUKONG_UV_SUB_PROCESS_H
 #define WUKONG_UV_SUB_PROCESS_H
 
+#include "subProcess.h"
 #include <uv.h>
 
 namespace wukong::utils
@@ -79,4 +80,4 @@ namespace wukong::utils
     };
 }
 
-#endif //WUKONG_UV_SUB_PROCESS_H
+#endif // WUKONG_UV_SUB_PROCESS_H

@@ -10,6 +10,7 @@
 #include <vector>
 #include <wukong/utils/log.h>
 #include <wukong/utils/macro.h>
+#include <wukong/utils/os.h>
 #include <wukong/utils/signal-tool.h>
 
 #define WK_CHECK_STATE(s1)                                              \
@@ -195,4 +196,4 @@ namespace wukong::utils
 
 }
 
-#endif //WUKONG_SUBPROCESS_H
+#endif // WUKONG_SUBPROCESS_H

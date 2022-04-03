@@ -7,6 +7,7 @@
 
 #include <wukong/endpoint/endpoint.h>
 #include <wukong/proto/proto.h>
+#include <wukong/utils/macro.h>
 
 class Invoker;
 

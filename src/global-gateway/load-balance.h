@@ -12,6 +12,7 @@
 #include <wukong/utils/json.h>
 #include <wukong/utils/locks.h>
 #include <wukong/utils/redis.h>
+#include <wukong/utils/macro.h>
 
 #include <map>
 #include <utility>

@@ -195,4 +195,14 @@ namespace wukong::utils
             return errno;
         return 0;
     }
+    int kill(pid_t pid, int signum)
+    {
+        if (::kill(pid, signum))
+        {
+            SPDLOG_ERROR("kill {} to {} Failed", signum, pid);
+            return errno;
+        }
+        else
+            return 0;
+    }
 }

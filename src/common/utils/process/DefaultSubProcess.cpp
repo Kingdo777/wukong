@@ -27,8 +27,6 @@ namespace wukong::utils
         int exec_errorno;
         int i;
         int status;
-        while (false)
-            ;
         WK_CHECK_WITH_ASSERT(!options.file.empty(), "must specify sub-process file path");
         WK_CHECK_WITH_ASSERT(!(options.flags & ~(DETACHED | SET_GID | SET_UID | SET_CPUS | SET_MEMORY)),
                              "options.flags is illegal");

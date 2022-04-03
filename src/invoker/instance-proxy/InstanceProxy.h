@@ -11,6 +11,7 @@
 #include <wukong/utils/config.h>
 #include <wukong/utils/log.h>
 #include <wukong/utils/radom.h>
+#include <wukong/utils/macro.h>
 
 #define CHECK_INSTANCE_STATUS_FAILED "Check Your Instance State, it's Unexpected"
 

@@ -76,16 +76,7 @@ add_subdirectory(src/faas)
 
 
 add_subdirectory(tools)
+add_subdirectory(tests)
 add_subdirectory(function/cpp/kingdo/test/hello)
 add_subdirectory(function/cpp/kingdo/test/hello1)
 add_subdirectory(function/cpp/kingdo/test/hello2)
-
-
-# format target
-# 格式化工程文件，蛮有意思的，第一次知道clang-format命令
-add_custom_target(wukong-format
-        COMMAND
-        ./tools/format.sh
-        WORKING_DIRECTORY
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        )

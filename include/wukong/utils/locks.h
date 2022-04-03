@@ -5,6 +5,7 @@
 #ifndef WUKONG_LOCKS_H
 #define WUKONG_LOCKS_H
 
+#include <mutex>
 #include <shared_mutex>
 
 namespace wukong::utils
@@ -14,4 +15,4 @@ namespace wukong::utils
     typedef std::unique_lock<std::shared_mutex> WriteLock; /// 写锁
     typedef std::shared_lock<std::shared_mutex> ReadLock; /// 读锁
 }
-#endif //WUKONG_LOCKS_H
+#endif // WUKONG_LOCKS_H

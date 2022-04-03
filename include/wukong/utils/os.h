@@ -5,7 +5,7 @@
 #ifndef WUKONG_OS_H
 #define WUKONG_OS_H
 
-#include <wukong/utils/log.h>
+#include <wukong/utils/macro.h>
 #include <wukong/utils/string-tool.h>
 
 #include <arpa/inet.h>
@@ -32,9 +32,9 @@ namespace wukong::utils
     std::string getIPFromHostname(const std::string& hostname);
 
     /**
-    * Returns the IP for the given interface, or picks one based on
-    * an "appropriate" interface name.
-    */
+     * Returns the IP for the given interface, or picks one based on
+     * an "appropriate" interface name.
+     */
     std::string getPrimaryIPForThisHost(const std::string& interface);
 
     int nonblock_ioctl(int fd, int set);
@@ -48,6 +48,8 @@ namespace wukong::utils
     int socket_pair(int fds[2]);
 
     int make_pipe(int fds[2], int flags);
+
+    int kill(pid_t pid, int signum);
 
     template <typename T>
     void write_2_fd(int fd, T val)
@@ -77,4 +79,4 @@ namespace wukong::utils
         return n;
     }
 }
-#endif //WUKONG_OS_H
+#endif // WUKONG_OS_H
