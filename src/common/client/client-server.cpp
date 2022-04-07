@@ -20,6 +20,11 @@ namespace wukong::client
         }
     }
 
+    std::vector<std::shared_ptr<Pistache::Aio::Handler>> ClientServer::getAllHandlers()
+    {
+        return reactor_->handlers(transportKey);
+    }
+
     std::shared_ptr<ClientHandler> ClientServer::pickOneHandler()
     {
         auto transports = reactor_->handlers(transportKey);

@@ -3,6 +3,7 @@
 //
 
 #include "LocalGateway.h"
+#include "LocalGatewayClientServer.h"
 
 LocalGateway::LocalGateway()
     : endpoint { this }
@@ -36,14 +37,14 @@ void LocalGateway::shutdown()
     killAllProcess();
 }
 
-bool LocalGateway::checkUser(const std::string& username_)
+bool LocalGateway::checkUser(const std::string& username)
 {
-    return this->username == username_;
+    return this->username_ == username;
 }
 
-bool LocalGateway::checkApp(const std::string& appname_)
+bool LocalGateway::checkApp(const std::string& appname)
 {
-    return this->appname == appname_;
+    return this->appname_ == appname;
 }
 
 bool LocalGateway::existFunCode(const std::string& funcname)
@@ -96,21 +97,26 @@ std::pair<bool, std::string> LocalGateway::loadFuncCode(const std::string& funcn
     return std::make_pair(success, msg);
 }
 
-std::pair<bool, std::string> LocalGateway::initApp(const std::string& username_, const std::string& appname_)
+std::pair<bool, std::string> LocalGateway::initApp(const std::string& username, const std::string& appname)
 {
-    username = username_;
-    appname  = appname_;
-    SPDLOG_DEBUG(fmt::format("Init App : {}#{}", username, appname));
-    auto funSet = redis.smembers(SET_FUNCTION_REDIS_KEY(username, appname));
+    username_ = username;
+    appname_  = appname;
+    SPDLOG_DEBUG(fmt::format("Init App : {}#{}", username_, appname_));
+    auto funSet = redis.smembers(SET_FUNCTION_REDIS_KEY(username_, appname_));
     if (funSet.empty())
     {
-        return std::make_pair(false, fmt::format("{}#{} have no Functions", username, appname));
+        return std::make_pair(false, fmt::format("{}#{} have no Functions", username_, appname_));
     }
-    wukong::utils::WriteLock lock(functions_mutex);
+    wukong::utils::WriteLock functions_write_lock(functions_mutex);
     for (const auto& funcname : funSet)
     {
-        auto funcHast = redis.hgetall(FUNCTION_REDIS_KEY(username, appname, funcname));
+        auto funcHast = redis.hgetall(FUNCTION_REDIS_KEY(username_, appname_, funcname));
         functions.emplace(funcname, wukong::proto::hashToFunction(funcHast));
+    }
+    wukong::utils::WriteLock processes_write_lock(processes_mutex);
+    for (const auto& funcname : funSet)
+    {
+        processes.emplace(funcname, std::make_shared<FuncProcesses>());
     }
     return std::make_pair(true, "ok");
 }
@@ -136,19 +142,27 @@ bool LocalGateway::PingCode(const boost::filesystem::path& lib_path)
     return pong;
 }
 
-std::pair<bool, std::string> LocalGateway::createFuncProcess(const wukong::proto::Function& func)
+/// createFuncProcess中继承了take-process中的两把锁
+WK_FUNC_RETURN_TYPE LocalGateway::createFuncProcess(const wukong::proto::Function& func, Process** process, LocalGatewayClientHandler* handler)
 {
-    wukong::utils::WriteLock writeLock(process_mutex);
-    auto process_ptr = std::make_shared<wukong::utils::DefaultSubProcess>();
+    WK_FUNC_START()
+    auto sub_process_ptr = std::make_shared<wukong::utils::DefaultSubProcess>();
     wukong::utils::SubProcess::Options options(worker_func_exec_path.string());
-    //TODO 这里应该施加资源限制
+    // TODO 这里应该施加资源限制
     options.Flags(0);
-    process_ptr->setOptions(options);
+    sub_process_ptr->setOptions(options);
     /// 启动子进程
-    int err = process_ptr->spawn();
+    auto internal_request_fd_index = sub_process_ptr->createPIPE(
+        wukong::utils::SubProcess::CREATE_PIPE | wukong::utils::SubProcess::WRITABLE_PIPE);
+    auto internal_response_fd_index = sub_process_ptr->createPIPE(
+        wukong::utils::SubProcess::CREATE_PIPE | wukong::utils::SubProcess::READABLE_PIPE);
+    // TODO 默认创建一定是成功的，即暂时不考虑扩容失败的问题
+    int err = sub_process_ptr->spawn();
     WK_CHECK_WITH_ASSERT(0 == err, fmt::format("spawn process \"{}\" failed with errno {}", worker_func_exec_path.string(), err));
-    int read_fd  = process_ptr->read_fd();
-    int write_fd = process_ptr->write_fd();
+    int read_fd              = sub_process_ptr->read_fd();
+    int write_fd             = sub_process_ptr->write_fd();
+    int internal_request_fd  = sub_process_ptr->getPIPE_FD(internal_request_fd_index);
+    int internal_response_fd = sub_process_ptr->getPIPE_FD(internal_response_fd_index);
 
     if (!LocalGateway::existFunCode(func.functionname()))
     {
@@ -159,73 +173,136 @@ std::pair<bool, std::string> LocalGateway::createFuncProcess(const wukong::proto
         }
     }
     auto lib_path = getFunCodePath(func.functionname());
-    struct FunctionInfo
-    {
-        char lib_path[256];
-        int threads;
-    } functionInfo { { 0 } };
+    FunctionInfo functionInfo;
     /// TODO 应该根据资源限制以及并发数，确定一个比较合适的并发级别
     functionInfo.threads = 1;
     WK_CHECK_WITH_ASSERT(lib_path.size() < 256, fmt::format("path <{}> is to long!", lib_path.string()));
     memcpy(functionInfo.lib_path, lib_path.c_str(), lib_path.size());
     wukong::utils::write_2_fd(write_fd, functionInfo);
-    bool success    = false;
-    std::string msg = "ok";
+
     /// 等待function启动完成
     wukong::utils::nonblock_ioctl(read_fd, 0);
     wukong::utils::read_from_fd(read_fd, &success);
     wukong::utils::nonblock_ioctl(read_fd, 1);
-    if (success)
-    {
-        SPDLOG_DEBUG("Create Worker-Func for {} Success", func.functionname());
-        const auto& handler = pickOneHandler();
-        processes.emplace(func.functionname(), ProcessInfo { std::move(process_ptr), handler });
-        /// 将fd写入到handler中进行监听
-        // TODO process结束时需要将其从handler中移除
-        handler->reactor()->registerFd(handler->key(), read_fd,
-                                       Pistache::Polling::NotifyOn::Read,
-                                       Pistache::Polling::Mode::Edge);
-        wukong::utils::WriteLock read_fd_set_lock(read_fd_set_mutex);
-        read_fd_set.insert(read_fd);
-        return std::make_pair(success, msg);
-    }
-    else
-    {
-        msg = fmt::format("Create Worker-Func for {} Failed", func.functionname());
-        SPDLOG_ERROR(msg);
-        return std::make_pair(success, msg);
-    }
+    WK_FUNC_CHECK(success, fmt::format("Create Worker-Func for {} Failed", func.functionname()));
+
+    SPDLOG_DEBUG("Create Worker-Func for {} Success", func.functionname());
+    auto& func_process = processes.at(func.functionname());
+    func_process->func_slots += (int)func.concurrency();
+    const auto& process_shared_ptr = std::make_shared<Process>(std::move(sub_process_ptr), handler, internal_request_fd, internal_response_fd, (int)func.concurrency() - 1);
+    func_process->process_vector.emplace_back(process_shared_ptr);
+    *process = process_shared_ptr.get();
+    /// 将fd写入到handler中进行监听
+    // TODO process结束时需要将其从handler中移除
+    handler->reactor()->registerFd(handler->key(), read_fd,
+                                   Pistache::Polling::NotifyOn::Read,
+                                   Pistache::Polling::Mode::Edge);
+    handler->reactor()->registerFd(handler->key(), internal_request_fd,
+                                   Pistache::Polling::NotifyOn::Read,
+                                   Pistache::Polling::Mode::Edge);
+    wukong::utils::WriteLock read_fd_set_lock(read_fd_set_mutex);
+    wukong::utils::WriteLock internal_request_fd_set_lock(internal_request_fd_set_mutex);
+    wukong::utils::WriteLock internal_request_fd_2_response_fd_map_lock(internal_request_fd_2_response_fd_map_mutex);
+    read_fd_set.insert(read_fd);
+    internal_request_fd_set.insert(internal_request_fd);
+    internal_request_fd_2_response_fd_map.emplace(internal_request_fd,internal_response_fd);
+    WK_FUNC_END()
 }
 
-void LocalGateway::callFunc(const wukong::proto::Message& msg, Pistache::Http::ResponseWriter response)
+WK_FUNC_RETURN_TYPE LocalGateway::takeProcess(const std::string& funcname, LocalGateway::Process** process, LocalGatewayClientHandler* handler)
 {
-    const auto& func = getFunction(msg.function());
-    wukong::utils::ReadLock readLock(process_mutex);
-    if (!processes.contains(func.functionname()))
+    WK_FUNC_START()
+    *process            = nullptr;
+    const auto& func    = getFunction(funcname);
+    int concurrency     = (int)func.concurrency();
+    bool is_concurrency = concurrency > 1;
+    WK_CHECK_WITH_ASSERT(!is_concurrency, "Dont Support concurrency now");
+    wukong::utils::ReadLock processes_read_lock(processes_mutex);
+    WK_CHECK_WITH_ASSERT(processes.contains(funcname), fmt::format("unknown function {}", funcname));
+    auto& func_processes = processes.at(funcname);
+    wukong::utils::ReadLock func_processes_read_lock(func_processes->func_processes_shared_mutex);
+    int left_func_slots = --(func_processes->func_slots);
+    /// 当前必然存在一个空位，要做的是找出这个空位
+//    SPDLOG_DEBUG("takeProcess, func_processes->func_slots:{}", func_processes->func_slots);
+    if (left_func_slots >= 0)
     {
-        readLock.unlock();
-        auto create_res = createFuncProcess(func);
-        if (!create_res.first)
+        for (const auto& item : func_processes->process_vector)
         {
-            response.send(Pistache::Http::Code::Internal_Server_Error,
-                          fmt::format("load func code failed : {}", create_res.second));
-            return;
+            int i = 1;
+//            SPDLOG_DEBUG("takeProcess, processes->slots:{}", item->slots);
+            if (is_concurrency)
+            {
+                if (item->slots <= 0)
+                    continue;
+                int left_slots = --(item->slots);
+                WK_CHECK_WITH_ASSERT(left_slots >= 0, "left_slots<0");
+            }
+            else if (!item->slots.compare_exchange_strong(i, 0))
+                continue;
+            *process = item.get();
+            break;
+        }
+        WK_CHECK_WITH_ASSERT(*process != nullptr, "don't found process");
+    }
+    /// 当前比不存在空位
+    else
+    {
+        /// 只有在非并发，或者刚好被concurrency整除时，才会创建新的process
+        /// 如并发值为5，则在-1，-6，-11时才会创建新的process
+        if (!(is_concurrency && ((left_func_slots + 1) % concurrency)))
+        {
+            func_processes_read_lock.unlock();
+            wukong::utils::WriteLock func_processes_write_lock(func_processes->func_processes_shared_mutex);
+            WK_FUNC_CHECK_RET(createFuncProcess(func, process, handler));
+        }
+        else /// 等待process被创建
+        {
+            while (*process == nullptr)
+            {
+                func_processes_read_lock.unlock();
+                // TODO 如果创建失败，那么就会进入死循环，目前先不支持并发！
+                while (func_processes->func_slots >= 0)
+                    ;
+                func_processes_read_lock.lock();
+                for (const auto& item : func_processes->process_vector)
+                {
+                    if (item->slots <= 0)
+                        continue;
+                    int left_slots = --(item->slots);
+                    WK_CHECK_WITH_ASSERT(left_slots >= 0, "left_slots<0");
+                    *process = item.get();
+                    break;
+                }
+            }
         }
     }
-    // TODO 我们应该在这里做出扩展决策！
-    const auto& process_ptr = processes.at(func.functionname()).process();
-    const auto& handler_ptr = processes.at(func.functionname()).handler();
-    WK_CHECK_WITH_ASSERT(process_ptr->isRunning(), "function sub-process is not running");
-    /// 约定第三个通道用于子进程读，父进程写; 第四个通道用于父进程读，子进程写
-    int read_fd  = process_ptr->read_fd();
-    int write_fd = process_ptr->write_fd();
-    handler_ptr->callFunc(write_fd, read_fd, msg, std::move(response));
+    WK_FUNC_END()
+}
+
+WK_FUNC_RETURN_TYPE LocalGateway::backProcess(const std::string& funcname, Process* process)
+{
+    WK_FUNC_START()
+    wukong::utils::ReadLock processes_read_lock(processes_mutex);
+    WK_CHECK_WITH_ASSERT(processes.contains(funcname), fmt::format("unknown function {}", funcname));
+    auto& func_processes = processes.at(funcname);
+    wukong::utils::ReadLock func_processes_read_lock(func_processes->func_processes_shared_mutex);
+    process->slots++;
+    func_processes->func_slots++;
+//    SPDLOG_DEBUG("backProcess, func_processes->func_slots:{} process->slots:{}", func_processes->func_slots, process->slots);
+
+    WK_FUNC_END()
 }
 
 std::set<int> LocalGateway::getReadFDs()
 {
     wukong::utils::ReadLock lock(read_fd_set_mutex);
     return read_fd_set;
+}
+
+std::set<int> LocalGateway::geInternalRequestFDs()
+{
+    wukong::utils::ReadLock lock(internal_request_fd_set_mutex);
+    return internal_request_fd_set;
 }
 
 std::shared_ptr<LocalGatewayClientHandler> LocalGateway::pickOneHandler()
@@ -235,10 +312,18 @@ std::shared_ptr<LocalGatewayClientHandler> LocalGateway::pickOneHandler()
 
 void LocalGateway::killAllProcess()
 {
-    wukong::utils::WriteLock lock(process_mutex);
-    for (auto& item : processes)
+    wukong::utils::WriteLock lock(processes_mutex);
+    for (auto& func_processes : processes)
     {
-        item.second.process()->kill();
+        for (auto& process : func_processes.second->process_vector)
+        {
+            process->sub_process->kill();
+        }
     }
     processes.clear();
+}
+void LocalGateway::externalCall(const wukong::proto::Message& msg, Pistache::Http::ResponseWriter response)
+{
+    LocalGatewayClientHandler::ExternalRequestEntry entry(msg, std::move(response));
+    pickOneHandler()->externalReadyQueue.push(std::move(entry));
 }

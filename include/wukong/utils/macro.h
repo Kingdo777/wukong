@@ -96,3 +96,30 @@ typedef std::pair<bool, std::string> WK_FUNC_RETURN_TYPE;
         const auto& ret_var__ = (ret);                               \
         WK_CHECK_WITH_ASSERT((ret_var__).first, (ret_var__).second); \
     } while (false)
+
+typedef struct FunctionInfo
+{
+    char lib_path[256] = { 0 };
+    int threads        = 0;
+} FunctionInfo;
+
+typedef struct Result
+{
+    bool success                   = false;
+    char data[WUKONG_MESSAGE_SIZE] = { 0 };
+    uint64_t msg_id                = 0;
+} FuncResult;
+
+typedef struct InternalRequest
+{
+    char funcname[32]              = { 0 };
+    char args[WUKONG_MESSAGE_SIZE] = { 0 };
+    uint64_t request_id                = 0;
+} InternalRequest;
+
+typedef struct InternalResponse
+{
+    bool success                   = false;
+    char data[WUKONG_MESSAGE_SIZE] = { 0 };
+    uint64_t request_id                = 0;
+} InternalResponse;

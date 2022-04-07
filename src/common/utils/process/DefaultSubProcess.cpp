@@ -245,7 +245,7 @@ namespace wukong::utils
             if (fd == use_fd)
                 cloexec_fcntl(use_fd, 0);
             else
-                fd = ::dup2(use_fd, fd);
+                    fd = ::dup2(use_fd, fd);
 
             if (fd == -1)
             {

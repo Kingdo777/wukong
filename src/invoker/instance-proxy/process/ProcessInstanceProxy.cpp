@@ -24,9 +24,9 @@ ProcessInstanceProxy::doStart(const std::string& username, const std::string& ap
         process.setOptions(options);
         /// 启动子进程
         int err = process.spawn();
-        if (!(0 == err))
+        if (err)
         {
-            msg = fmt::format("spawn process \"{}\" failed with errno {}", exec_path.string(), err);
+            msg = fmt::format("spawn process \"{}\" failed with errno {}", exec_path.string(), wukong::utils::errors());
             return std::make_pair(success, msg);
         }
         /// 获取实例的port
@@ -36,7 +36,7 @@ ProcessInstanceProxy::doStart(const std::string& username, const std::string& ap
         wukong::utils::read_from_fd(fd, &instancePort);
         if (instancePort <= 0)
         {
-            msg = fmt::format("can't get Instance Port", exec_path.string(), err);
+            msg = fmt::format("can't get Instance Port");
             return std::make_pair(success, msg);
         }
         auto ping_res = this->doPing();

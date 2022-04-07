@@ -35,6 +35,8 @@ namespace wukong::utils
     const int Config::insFuncReadFD                           = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_READ_FD", 3); /// 3
     const uint64_t Config::insFuncReadBufferSize              = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_READ_BUFFER_SIZE", WUKONG_MESSAGE_SIZE); /// 3
     const int Config::insFuncWriteFD                          = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 4); /// 4
+    const int Config::insFuncInternalRequestFD                = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 5); /// 4
+    const int Config::insFuncInternalResponseFD               = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 6); /// 4
 
     void Config::print()
     {
@@ -72,6 +74,8 @@ namespace wukong::utils
         SPDLOG_INFO("insFuncDefaultReadFD           {}", insFuncReadFD);
         SPDLOG_INFO("insFuncReadBufferSize          {}", insFuncReadBufferSize);
         SPDLOG_INFO("insFuncDefaultWriteFD          {}", insFuncWriteFD);
+        SPDLOG_INFO("insFuncDefaultRequestFD        {}", insFuncInternalRequestFD);
+        SPDLOG_INFO("insFuncDefaultResponseFD       {}", insFuncInternalResponseFD);
 
         SPDLOG_INFO("------------------------------------------------------------");
     }

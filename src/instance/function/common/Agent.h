@@ -6,21 +6,58 @@
 #define WUKONG_AGENT_H
 
 #include <boost/filesystem.hpp>
+#include <faas/function-interface.h>
 #include <pistache/async.h>
+#include <pistache/http.h>
 #include <pistache/reactor.h>
+#include <utility>
 #include <wukong/proto/proto.h>
 #include <wukong/utils/config.h>
 #include <wukong/utils/dl.h>
+#include <wukong/utils/errors.h>
 #include <wukong/utils/log.h>
 #include <wukong/utils/os.h>
+#include <wukong/utils/reactor/Reactor.h>
 #include <wukong/utils/redis.h>
-
-#include "AgentHandler.h"
-#include <utility>
 
 typedef void (*Faas_Main)(FaasHandle*);
 
-class Agent
+class Agent;
+
+class AgentHandler : public Pistache::Aio::Handler
+{
+public:
+    PROTOTYPE_OF(Pistache::Aio::Handler, AgentHandler)
+
+    explicit AgentHandler(Agent* agent_)
+        : agent(agent_) {};
+
+    AgentHandler(const AgentHandler& handler)
+        : agent(handler.agent)
+    { }
+
+    void onReady(const Pistache::Aio::FdSet& fds) override;
+
+    void registerPoller(Pistache::Polling::Epoll& poller) override;
+
+    struct MessageEntry
+    {
+        explicit MessageEntry(wukong::proto::Message msg_)
+            : msg(std::move(msg_))
+        { }
+        wukong::proto::Message msg;
+    };
+
+    void putMessage(wukong::proto::Message msg);
+
+private:
+    void handlerMessage();
+
+    Agent* agent;
+    Pistache::PollableQueue<MessageEntry> messageQueue;
+};
+
+class Agent : public Reactor
 {
 public:
     enum Type {
@@ -46,6 +83,8 @@ public:
         int read_fd;
         uint64_t max_read_buffer_size;
         int write_fd;
+        int request_fd;
+        int response_fd;
         Type type_;
     };
 
@@ -53,18 +92,38 @@ public:
 
     void init(Options& options);
 
-    void set_handler(std::shared_ptr<AgentHandler> handler);
+    void run() override;
 
-    void run();
-
-    void shutdown();
+    void shutdown() override;
 
     void doExec(FaasHandle* h);
 
     void finishExec(wukong::proto::Message msg);
 
+    void internalCall(const std::string& func, const std::string& args, uint64_t request_id, Pistache::Async::Deferred<std::string> deferred)
+    {
+        internalRequestEntry entry(func, args, request_id, std::move(deferred));
+        internalRequestQueue.push(std::move(entry));
+    }
+
+    struct internalRequestEntry
+    {
+        internalRequestEntry(std::string func, std::string args_, uint64_t request_id_, Pistache::Async::Deferred<std::string> deferred_)
+            : funcname(std::move(func))
+            , args(std::move(args_))
+            , request_id(request_id_)
+            , deferred(std::move(deferred_))
+        { }
+        std::string funcname;
+        std::string args;
+        uint64_t request_id;
+        Pistache::Async::Deferred<std::string> deferred;
+    };
+
 private:
     void onRunning() const;
+
+    void onReady(const Pistache::Polling::Event& event) override;
 
     void onFailed() const;
 
@@ -72,25 +131,25 @@ private:
 
     std::shared_ptr<AgentHandler> pickOneHandler();
 
+    void handlerInternalRequest();
+
     void handlerWriteQueue();
 
+    void handlerInternalResponse();
+
     void handlerIncoming();
-
-    std::shared_ptr<AgentHandler> handler_ = nullptr;
-
-    std::shared_ptr<Pistache::Aio::Reactor> reactor_;
-    Pistache::Aio::Reactor::Key handlerKey_;
-    std::atomic<uint64_t> handlerIndex_;
-
-    std::thread task;
-
-    Pistache::Polling::Epoll poller;
-    Pistache::NotifyFd shutdownFd;
 
     int read_fd;
     uint64_t max_read_buffer_size;
     int write_fd;
     Pistache::PollableQueue<wukong::proto::Message> writeQueue;
+    Pistache::PollableQueue<internalRequestEntry> internalRequestQueue;
+
+    /// 不用上锁，因为是单线程
+    std::unordered_map<uint64_t, Pistache::Async::Deferred<std::string>> internalRequestDeferredMap;
+
+    int request_fd;
+    int response_fd;
 
     Type type;
 
@@ -98,4 +157,4 @@ private:
     Faas_Main func_entry = nullptr;
 };
 
-#endif //WUKONG_AGENT_H
+#endif // WUKONG_AGENT_H

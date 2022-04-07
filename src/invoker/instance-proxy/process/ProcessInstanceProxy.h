@@ -8,6 +8,7 @@
 #include "../InstanceProxy.h"
 #include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
+#include <wukong/utils/errors.h>
 #include <wukong/utils/os.h>
 #include <wukong/utils/process/DefaultSubProcess.h>
 
@@ -52,4 +53,4 @@ private:
     std::string instanceHost = "localhost";
 };
 
-#endif //WUKONG_PROCESS_INSTANCE_PROXY_H
+#endif // WUKONG_PROCESS_INSTANCE_PROXY_H

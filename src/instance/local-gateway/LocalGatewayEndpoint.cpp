@@ -83,16 +83,16 @@ void LocalGatewayHandler::handlePostReq(const Pistache::Http::Request& request, 
     {
         if (uri.starts_with("/function/call"))
         {
-            SPDLOG_DEBUG("LocalGatewayHandler received /function/call request");
             const auto& msg      = wukong::proto::jsonToMessage(request.body());
             const auto& username = msg.user();
             const auto& appname  = msg.application();
+            SPDLOG_DEBUG("LocalGatewayHandler received /function/call request , msg-id = {}", msg.id());
             if (!endpoint()->lg->checkUser(username) || !endpoint()->lg->checkApp(appname))
             {
                 response.send(Pistache::Http::Code::Internal_Server_Error, "username or appname isn't match Instance");
                 return;
             }
-            endpoint()->lg->callFunc(msg, std::move(response));
+            endpoint()->lg->externalCall(msg, std::move(response));
             return;
         }
     }

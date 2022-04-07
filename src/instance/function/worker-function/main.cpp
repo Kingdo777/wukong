@@ -8,8 +8,8 @@
 int main()
 {
     wukong::utils::initLog();
-    SPDLOG_INFO("-------------------worker func config---------------------");
-    wukong::utils::Config::print();
+//    SPDLOG_INFO("-------------------worker func config---------------------");
+//    wukong::utils::Config::print();
     SIGNAL_HANDLER()
     Agent agent;
     auto opts = Agent::Options::options();

@@ -9,8 +9,9 @@
 
 namespace wukong::utils
 {
+    void setEnv(std::string const& key, int val, bool overwrite = true);
+    void setEnv(std::string const& key, std::string const& val, bool overwrite = true);
     std::string getEnvVar(const std::string& key, const std::string& deflt);
-
     int getIntEnvVar(const std::string& key, int deflt);
 }
-#endif //WUKONG_ENV_H
+#endif // WUKONG_ENV_H

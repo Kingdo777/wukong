@@ -77,6 +77,4 @@ add_subdirectory(src/faas)
 
 add_subdirectory(tools)
 add_subdirectory(tests)
-add_subdirectory(function/cpp/kingdo/test/hello)
-add_subdirectory(function/cpp/kingdo/test/hello1)
-add_subdirectory(function/cpp/kingdo/test/hello2)
+add_subdirectory(function)

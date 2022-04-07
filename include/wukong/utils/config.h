@@ -66,6 +66,10 @@ namespace wukong::utils
 
         static int InstanceFunctionDefaultWriteFD() { return insFuncWriteFD; };
 
+        static int InstanceFunctionDefaultInternalRequestFD() { return insFuncInternalRequestFD; };
+
+        static int InstanceFunctionDefaultInternalResponseFD() { return insFuncInternalResponseFD; };
+
         static void print();
 
     private:
@@ -111,7 +115,9 @@ namespace wukong::utils
         const static int insFuncReadFD;
         const static uint64_t insFuncReadBufferSize;
         const static int insFuncWriteFD;
+        const static int insFuncInternalRequestFD;
+        const static int insFuncInternalResponseFD;
     };
 }
 
-#endif //WUKONG_CONFIG_H
+#endif // WUKONG_CONFIG_H

@@ -11,7 +11,6 @@ int main()
     SIGNAL_HANDLER()
     GlobalGatewayEndpoint e;
     e.start();
-    sleep(1);
     SIGNAL_WAIT()
     e.stop();
     wukong::utils::Timing::printTimerTotals();

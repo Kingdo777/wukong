@@ -5,6 +5,16 @@
 
 namespace wukong::utils
 {
+    void setEnv(std::string const& key, std::string const& val, bool overwrite)
+    {
+        setenv(key.c_str(), val.c_str(), overwrite);
+    }
+
+    void setEnv(std::string const& key, int val, bool overwrite)
+    {
+        setEnv(key, std::to_string(val), overwrite);
+    }
+
     std::string getEnvVar(std::string const& key, std::string const& deflt)
     {
         char const* val = getenv(key.c_str());

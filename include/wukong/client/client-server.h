@@ -63,6 +63,7 @@ namespace wukong::client
             return status == Started;
         }
 
+        std::vector<std::shared_ptr<Pistache::Aio::Handler>> getAllHandlers();
         std::shared_ptr<ClientHandler> pickOneHandler();
 
         void setHandler(std::shared_ptr<Pistache::Aio::Handler> handler_);
@@ -82,4 +83,4 @@ namespace wukong::client
     };
 }
 
-#endif //WUKONG_CLIENT_SERVER_H
+#endif // WUKONG_CLIENT_SERVER_H
