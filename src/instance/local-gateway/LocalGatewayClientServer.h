@@ -7,6 +7,9 @@
 
 #include <wukong/client/client-server.h>
 #include <wukong/proto/proto.h>
+#include <wukong/utils/struct.h>
+#include <wukong/utils/errors.h>
+
 
 class LocalGateway;
 
@@ -79,11 +82,17 @@ public:
     };
 
 private:
+    void handleStorageFunctionInternalRequest(const wukong::proto::Message& msg, int responseFD);
+    void handleWorkerFunctionInternalRequest(const wukong::proto::Message& msg, int responseFD);
+
     void handleInternalReadyQueue();
     void handleInternalWaitQueue();
     void handleExternalReadyQueue();
     void handleExternalWaitQueue();
 
+    void handleExternalResult(const FuncResult& result);
+    void handleInternalWorkerResult(const FuncResult& result);
+    void handleInternalStorageResult(const FuncResult& result);
     void handleResult(int fd);
     void handleInternalRequest(int fd);
 
@@ -95,8 +104,19 @@ private:
     std::mutex externalResponseMapMutex;
     std::unordered_map<uint64_t, ExternalResponseEntry> externalResponseMap;
 
-    std::mutex internalResponseMapMutex;
-    std::unordered_map<uint64_t, InternalResponseEntry> internalResponseMap;
+    std::mutex internalWorkerResponseMapMutex;
+    std::unordered_map<uint64_t, InternalResponseEntry> internalWorkerResponseMap;
+
+    std::mutex internalStorageResponseMapMutex;
+    std::unordered_map<uint64_t, InternalResponseEntry> internalStorageResponseMap;
+
+    enum ResultType {
+        ExternalResponse,
+        InternalWorkerResponse,
+        InternalStorageResponse
+    };
+    std::mutex responseTypeMapMutex;
+    std::unordered_map<uint64_t, ResultType> responseTypeMap;
 
     LocalGateway* lg;
 };

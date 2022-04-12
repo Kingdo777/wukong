@@ -75,7 +75,6 @@ namespace wukong::utils
         {
             SPDLOG_ERROR("read_from_fd : errno == EPIPE"); /* parent process has quit */
         }
-        WK_CHECK(n == sizeof(T), "read_from_fd failed");
         return n;
     }
 }

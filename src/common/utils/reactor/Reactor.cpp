@@ -22,14 +22,14 @@ void Reactor::set_handler(std::shared_ptr<Pistache::Aio::Handler> handler)
 }
 void Reactor::run()
 {
-    WK_CHECK_WITH_ASSERT(handler_ != nullptr, "handler == nullptr");
+    WK_CHECK_WITH_EXIT(handler_ != nullptr, "handler == nullptr");
     reactor_->run();
     task = std::thread([=, this] {
         for (;;)
         {
             std::vector<Pistache::Polling::Event> events;
             int ready_fds = poller.poll(events);
-            WK_CHECK_WITH_ASSERT(ready_fds != -1, "Pistache::Polling");
+            WK_CHECK_WITH_EXIT(ready_fds != -1, "Pistache::Polling");
             for (const auto& event : events)
             {
                 if (event.tag == shutdownFd.tag())

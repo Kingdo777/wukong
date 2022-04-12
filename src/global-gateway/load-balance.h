@@ -240,7 +240,7 @@ public:
 
         size_t size() const
         {
-            WK_CHECK_WITH_ASSERT(invokerSet.size() == invokers.size(), "invokerSet.size() ！= invokers.size()");
+            WK_CHECK_WITH_EXIT(invokerSet.size() == invokers.size(), "invokerSet.size() ！= invokers.size()");
             return invokerSet.size();
         }
 
@@ -256,7 +256,7 @@ public:
 
         void update(const std::string& key) const
         {
-            WK_CHECK_WITH_ASSERT(contains(key), "Instance is not exist");
+            WK_CHECK_WITH_EXIT(contains(key), "Instance is not exist");
             if (contains(key))
             {
                 //  wukong::utils::UniqueLock lock(instanceMutex[key]);
@@ -265,21 +265,21 @@ public:
 
         void add(const std::string& key, const wukong::proto::Instance& instance)
         {
-            WK_CHECK_WITH_ASSERT(!contains(key), "Instance is exist");
+            WK_CHECK_WITH_EXIT(!contains(key), "Instance is exist");
             instanceMeta.emplace(key, instance);
             //  instanceMutex.emplace(key, std::mutex());
         }
 
         void remove(const std::string& key)
         {
-            WK_CHECK_WITH_ASSERT(contains(key), "Instance is not exist");
+            WK_CHECK_WITH_EXIT(contains(key), "Instance is not exist");
             instanceMeta.erase(key);
             //  instanceMutex.erase(key);
         }
 
         const wukong::proto::Instance& get(const std::string& key)
         {
-            WK_CHECK_WITH_ASSERT(contains(key), "Instance is not exist");
+            WK_CHECK_WITH_EXIT(contains(key), "Instance is not exist");
             return instanceMeta.at(key);
         }
 

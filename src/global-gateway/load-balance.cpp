@@ -270,7 +270,7 @@ void LoadBalance::dispatch(wukong::proto::Message&& msg, Pistache::Http::Respons
                                   msg.user(), msg.application(), msg.function()));
         return;
     }
-    WK_CHECK_WITH_ASSERT(func_index_set.size() == 1, "FunctionMete Get unknown errors");
+    WK_CHECK_WITH_EXIT(func_index_set.size() == 1, "FunctionMete Get unknown errors");
     LoadBalanceClientHandler::FunctionCallEntry functionCallEntry(
         "",
         "",
@@ -296,7 +296,7 @@ void LoadBalance::dispatch(wukong::proto::Message&& msg, Pistache::Http::Respons
         /// D1. 启动成功后，派发请求
         /// D2. 启动失败，则返回错误内容给用户
         std::string app_index = fmt::format("{}#{}", msg.user(), msg.application());
-        WK_CHECK_WITH_ASSERT(applications.applications.contains(app_index), "ApplicationMete Get unknown errors");
+        WK_CHECK_WITH_EXIT(applications.applications.contains(app_index), "ApplicationMete Get unknown errors");
         wukong::proto::Application app = applications.applications.at(app_index);
         wukong::proto::Instance instance;
         instance.set_user(app.user());

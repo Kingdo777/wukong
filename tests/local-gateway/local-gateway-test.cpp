@@ -318,8 +318,7 @@ int main()
         int instancePort = 0;
         wukong::utils::nonblock_ioctl(read_fd, 0);
         wukong::utils::read_from_fd(read_fd, &instancePort);
-        WK_CHECK_WITH_ASSERT(instancePort > 0, fmt::format("can't get Instance Port"));
-        SPDLOG_DEBUG("{}", instancePort);
+        WK_CHECK_WITH_EXIT(instancePort > 0, fmt::format("can't get Instance Port"));
 
         wukong::client::ClientServer cs;
         auto opts = Pistache::Http::Client::options().threads(wukong::utils::Config::ClientNumThreads()).maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
@@ -354,7 +353,7 @@ int main()
                     msg = e.what();
                 }
             });
-        WK_CHECK_WITH_ASSERT(success, fmt::format("Ping Failed, {}", msg));
+        WK_CHECK_WITH_EXIT(success, fmt::format("Ping Failed, {}", msg));
 
         uri = fmt::format("http://localhost:{}/init", instancePort);
         Pistache::Http::Cookie cookie1("username", username);
@@ -383,7 +382,7 @@ int main()
                     msg = e.what();
                 }
             });
-        WK_CHECK_WITH_ASSERT(success, fmt::format("Init Failed, {}", msg));
+        WK_CHECK_WITH_EXIT(success, fmt::format("Init Failed, {}", msg));
 
         GlobalGatewayEndpoint endpoint(&cs, instancePort);
         endpoint.start();

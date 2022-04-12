@@ -27,8 +27,8 @@ namespace wukong::utils
         int exec_errorno;
         int i;
         int status;
-        WK_CHECK_WITH_ASSERT(!options.file.empty(), "must specify sub-process file path");
-        WK_CHECK_WITH_ASSERT(!(options.flags & ~(DETACHED | SET_GID | SET_UID | SET_CPUS | SET_MEMORY)),
+        WK_CHECK_WITH_EXIT(!options.file.empty(), "must specify sub-process file path");
+        WK_CHECK_WITH_EXIT(!(options.flags & ~(DETACHED | SET_GID | SET_UID | SET_CPUS | SET_MEMORY)),
                              "options.flags is illegal");
 
         err             = ENOMEM;
@@ -174,7 +174,7 @@ namespace wukong::utils
             fds[1] = fd;
             return 0;
         default:
-            WK_CHECK_WITH_ASSERT(0, "Unexpected flags");
+            WK_CHECK_WITH_EXIT(0, "Unexpected flags");
             return EINVAL;
         }
     }

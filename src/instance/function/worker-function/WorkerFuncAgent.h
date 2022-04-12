@@ -2,8 +2,8 @@
 // Created by kingdo on 2022/3/27.
 //
 
-#ifndef WUKONG_AGENT_H
-#define WUKONG_AGENT_H
+#ifndef WUKONG_WORKERFUNCAGENT_H
+#define WUKONG_WORKERFUNCAGENT_H
 
 #include <boost/filesystem.hpp>
 #include <faas/function-interface.h>
@@ -19,17 +19,19 @@
 #include <wukong/utils/os.h>
 #include <wukong/utils/reactor/Reactor.h>
 #include <wukong/utils/redis.h>
+#include <wukong/utils/macro.h>
+#include <wukong/utils/struct.h>
 
 typedef void (*Faas_Main)(FaasHandle*);
 
-class Agent;
+class WorkerFuncAgent;
 
 class AgentHandler : public Pistache::Aio::Handler
 {
 public:
     PROTOTYPE_OF(Pistache::Aio::Handler, AgentHandler)
 
-    explicit AgentHandler(Agent* agent_)
+    explicit AgentHandler(WorkerFuncAgent* agent_)
         : agent(agent_) {};
 
     AgentHandler(const AgentHandler& handler)
@@ -53,22 +55,21 @@ public:
 private:
     void handlerMessage();
 
-    Agent* agent;
+    WorkerFuncAgent* agent;
     Pistache::PollableQueue<MessageEntry> messageQueue;
 };
 
-class Agent : public Reactor
+class WorkerFuncAgent : public Reactor
 {
 public:
     enum Type {
         C_PP,
-        Python,
-        Storage
+        Python
     };
 
     struct Options
     {
-        friend class Agent;
+        friend class WorkerFuncAgent;
 
         Options();
 
@@ -88,7 +89,7 @@ public:
         Type type_;
     };
 
-    Agent();
+    WorkerFuncAgent();
 
     void init(Options& options);
 
@@ -100,11 +101,7 @@ public:
 
     void finishExec(wukong::proto::Message msg);
 
-    void internalCall(const std::string& func, const std::string& args, uint64_t request_id, Pistache::Async::Deferred<std::string> deferred)
-    {
-        internalRequestEntry entry(func, args, request_id, std::move(deferred));
-        internalRequestQueue.push(std::move(entry));
-    }
+    void internalCall(const std::string& func, const std::string& args, uint64_t request_id, Pistache::Async::Deferred<std::string> deferred);
 
     struct internalRequestEntry
     {
@@ -157,4 +154,4 @@ private:
     Faas_Main func_entry = nullptr;
 };
 
-#endif // WUKONG_AGENT_H
+#endif // WUKONG_WORKERFUNCAGENT_H

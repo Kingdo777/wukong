@@ -16,9 +16,8 @@ void wukong::utils::initLog(std::string exec_name)
     if (exec_name.empty())
     {
         exec_name = boost::dll::program_location().filename().string();
-        exec_name.resize(25);
     }
-    std::string pattern = fmt::format("%^ [{:^25}] [%H:%M:%S] [%t] [%=6l]%$ %-60v [%@]", exec_name);
+    std::string pattern = fmt::format("%^ [{:^20}] [%H:%M:%S] [%t] [%=6l]%$ %-60v [%@]", exec_name);
 
     spdlog::set_pattern(pattern);
 

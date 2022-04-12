@@ -11,7 +11,7 @@
 
 int main()
 {
-    wukong::utils::initLog();
+    wukong::utils::initLog("local-gateway");
     SPDLOG_INFO("-------------------local-gateway config---------------------");
     wukong::utils::Config::print();
     SIGNAL_HANDLER()

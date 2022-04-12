@@ -60,7 +60,7 @@ public:
 
     Invoker* invoker()
     {
-        WK_CHECK_WITH_ASSERT(ink != nullptr, "invoker is NULL");
+        WK_CHECK_WITH_EXIT(ink != nullptr, "invoker is NULL");
         return ink;
     }
 

@@ -5,7 +5,7 @@
 
 int main()
 {
-    wukong::utils::initLog();
+    wukong::utils::initLog("global-gateway");
     SPDLOG_INFO("-------------------global-gateway config--------------------");
     wukong::utils::Config::print();
     SIGNAL_HANDLER()

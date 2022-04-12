@@ -12,7 +12,7 @@ int main()
 {
     //    ProcessInstanceProxy proxy;
     //    proxy.test();
-    wukong::utils::initLog();
+    wukong::utils::initLog("invoker");
     wukong::utils::Config::print();
     SIGNAL_HANDLER()
     Invoker invoker;

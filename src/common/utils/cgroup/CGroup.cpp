@@ -28,7 +28,7 @@ WK_FUNC_RETURN_TYPE CpuCGroup::setCPUS(int cores)
     WK_FUNC_CHECK(status == Created, "CGroup is not Create or has been Deleted");
     WK_FUNC_CHECK(cores > 0, "cores must is Positive");
     int add = !!(cores % WUKONG_CPU_UNIT_SIZE);
-    WK_CHECK_WITH_ASSERT(add == 0 || add == 1, "Wrong value of add");
+    WK_CHECK_WITH_EXIT(add == 0 || add == 1, "Wrong value of add");
     cores                              = (cores / WUKONG_CPU_UNIT_SIZE + add) * WUKONG_CPU_UNIT_SIZE;
     cfs_quota_us                       = cfs_period_us * cores / 1000;
     boost::filesystem::path quota_path = get_path().append("cpu.cfs_quota_us");
@@ -58,7 +58,7 @@ WK_FUNC_RETURN_TYPE MemoryCGroup::setHardLimit(int mem_size)
     WK_FUNC_CHECK(status == Created, "CGroup is not Create or has been Deleted");
     WK_FUNC_CHECK(mem_size > 0, "mem_size must is Positive");
     int add = !!(mem_size % WUKONG_MEMORY_UNIT_SIZE);
-    WK_CHECK_WITH_ASSERT(add == 0 || add == 1, "Wrong value of add");
+    WK_CHECK_WITH_EXIT(add == 0 || add == 1, "Wrong value of add");
     hard_limit                              = (mem_size / WUKONG_MEMORY_UNIT_SIZE + add) * WUKONG_MEMORY_UNIT_SIZE * 1024 * 1024;
     boost::filesystem::path hard_limit_path = get_path().append("memory.limit_in_bytes");
     return setValue(hard_limit_path, hard_limit);
@@ -119,7 +119,7 @@ WK_FUNC_RETURN_TYPE CGroup::remove(bool forcibly)
     for (pid_t pid : procs)
     {
         auto ret = wukong::utils::kill(pid, SIGTERM);
-        WK_CHECK_WITH_ASSERT(!ret, fmt::format("Send {} to {} get an errors : {}", SIGTERM, pid, wukong::utils::errors()));
+        WK_CHECK_WITH_EXIT(!ret, fmt::format("Send {} to {} get an errors : {}", SIGTERM, pid, wukong::utils::errors()));
         WK_CHECK(pid == ::waitpid(pid, nullptr, 0), "SubProcess Kill Wrong!");
     }
     int res = ::remove(get_path().c_str());
@@ -159,7 +159,7 @@ WK_FUNC_RETURN_TYPE CGroup::getProcs(std::vector<pid_t>& procs)
 }
 void CGroup::set_path(const boost::filesystem::path& path_)
 {
-    WK_CHECK_FUNC_RET_WITH_ASSERT(path_check(path_));
+    WK_CHECK_FUNC_RET_WITH_EXIT(path_check(path_));
     path = path_;
 }
 boost::filesystem::path CGroup::get_path() const

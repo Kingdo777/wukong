@@ -5,81 +5,81 @@
 #include <wukong/utils/errors.h>
 namespace wukong::utils
 {
-    std::string errors()
+    std::string errors(const std::string& op)
     {
         switch (errno)
         {
         case EPERM:
-            return "EPERM,Operation not permitted";
+            return op + ": EPERM,Operation not permitted";
         case ENOENT:
-            return "ENOENT,No such file or directory";
+            return op + ": ENOENT,No such file or directory";
         case ESRCH:
-            return "ESRCH,No such process";
+            return op + ": ESRCH,No such process";
         case EINTR:
-            return "EINTR,Interrupted system call";
+            return op + ": EINTR,Interrupted system call";
         case EIO:
-            return "EIO,I/O error";
+            return op + ": EIO,I/O error";
         case ENXIO:
-            return "ENXIO,No such device or address";
+            return op + ": ENXIO,No such device or address";
         case E2BIG:
-            return "E2BIG,Argument list too long";
+            return op + ": E2BIG,Argument list too long";
         case ENOEXEC:
-            return "ENOEXEC,Exec format error";
+            return op + ": ENOEXEC,Exec format error";
         case EBADF:
-            return "EBADF,Bad file number";
+            return op + ": EBADF,Bad file number";
         case ECHILD:
-            return "ECHILD,No child processes";
+            return op + ": ECHILD,No child processes";
         case EAGAIN:
-            return "EAGAIN,Try again";
+            return op + ": EAGAIN,Try again";
         case ENOMEM:
-            return "ENOMEM,Out of memory";
+            return op + ": ENOMEM,Out of memory";
         case EACCES:
-            return "EACCES,Permission denied";
+            return op + ": EACCES,Permission denied";
         case EFAULT:
-            return "EFAULT,Bad address";
+            return op + ": EFAULT,Bad address";
         case ENOTBLK:
-            return "ENOTBLK,Block device required";
+            return op + ": ENOTBLK,Block device required";
         case EBUSY:
-            return "EBUSY,Device or resource busy";
+            return op + ": EBUSY,Device or resource busy";
         case EEXIST:
-            return "EEXIST,File exists";
+            return op + ": EEXIST,File exists";
         case EXDEV:
-            return "EXDEV,Cross-device link";
+            return op + ": EXDEV,Cross-device link";
         case ENODEV:
-            return "ENODEV,No such device";
+            return op + ": ENODEV,No such device";
         case ENOTDIR:
-            return "ENOTDIR,Not a directory";
+            return op + ": ENOTDIR,Not a directory";
         case EISDIR:
-            return "EISDIR,Is a directory";
+            return op + ": EISDIR,Is a directory";
         case EINVAL:
-            return "EINVAL,Invalid argument";
+            return op + ": EINVAL,Invalid argument";
         case ENFILE:
-            return "ENFILE,File table overflow";
+            return op + ": ENFILE,File table overflow";
         case EMFILE:
-            return "EMFILE,Too many open files";
+            return op + ": EMFILE,Too many open files";
         case ENOTTY:
-            return "ENOTTY,Not a typewriter";
+            return op + ": ENOTTY,Not a typewriter";
         case ETXTBSY:
-            return "ETXTBSY,Text file busy";
+            return op + ": ETXTBSY,Text file busy";
         case EFBIG:
-            return "EFBIG,File too large";
+            return op + ": EFBIG,File too large";
         case ENOSPC:
-            return "ENOSPC,No space left on device";
+            return op + ": ENOSPC,No space left on device";
         case ESPIPE:
-            return "ESPIPE,Illegal seek";
+            return op + ": ESPIPE,Illegal seek";
         case EROFS:
-            return "EROFS,Read-only file system";
+            return op + ": EROFS,Read-only file system";
         case EMLINK:
-            return "EMLINK,Too many links";
+            return op + ": EMLINK,Too many links";
         case EPIPE:
-            return "EPIPE,Broken pipe";
+            return op + ": EPIPE,Broken pipe";
         case EDOM:
-            return "EDOM,Math argument out of domain of func";
+            return op + ": EDOM,Math argument out of domain of func";
         case ERANGE:
-            return "ERANGE,Math result not representable";
+            return op + ": ERANGE,Math result not representable";
         default:
-            WK_CHECK_WITH_ASSERT(false, "errno is out of range");
-            throw std::runtime_error("Unreachable");
+            return "errno is out of range";
+            perror("");
         }
     }
 }

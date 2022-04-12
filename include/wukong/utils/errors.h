@@ -11,7 +11,7 @@
 
 namespace wukong::utils
 {
-    std::string errors();
+    std::string errors(const std::string& op = "");
 }
 
 #endif // WUKONG_ERRORS_H

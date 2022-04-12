@@ -3,6 +3,14 @@
 #include <climits> // for PIPE_BUF
 #include <wukong/utils/log.h>
 
+#define MAGIC_NUMBER_WUKONG (0x424E4F44474E494B)
+#define magic_t uint64_t
+#define MAGIC_NUMBER_CHECK(n) (!((n) ^ MAGIC_NUMBER_WUKONG))
+
+#define STORAGE_FUNCTION_NAME "__wukong_storage_internal_function__"
+
+#define STORAGE_FUNCTION_DEFAULT_SIZE (64 * 1024 * 1024) // 64MB
+
 // We're always on x86_64
 #define WUKONG_CACHE_LINE_SIZE 64
 #define WUKONG_PAGE_SIZE 4096
@@ -34,14 +42,35 @@ static_assert(WUKONG_MESSAGE_SIZE <= PIPE_BUF,
 static_assert(WUKONG_MESSAGE_SIZE >= WUKONG_CACHE_LINE_SIZE * 2,
               "WUKONG_MESSAGE_SIZE is too small");
 
-#define WK_CHECK_WITH_ASSERT(condition, msg) \
-    do                                       \
-    {                                        \
-        bool check = (condition);            \
-        if (check)                           \
-            break;                           \
-        WK_CHECK(check, msg);                \
-        assert(false);                       \
+#define WK_CHECK_WITH_ERROR_HANDLE_and_RETURN(condition, msg, onFiled) \
+    do                                                                 \
+    {                                                                  \
+        bool check = (condition);                                      \
+        if (check)                                                     \
+            break;                                                     \
+        WK_CHECK(check, msg);                                          \
+        (onFiled)(msg);                                                \
+        return;                                                        \
+    } while (false)
+
+#define WK_CHECK_WITH_ERROR_HANDLE(condition, msg, onFiled) \
+    do                                                      \
+    {                                                       \
+        bool check = (condition);                           \
+        if (check)                                          \
+            break;                                          \
+        WK_CHECK(check, msg);                               \
+        onFiled(msg);                                       \
+    } while (false)
+
+#define WK_CHECK_WITH_EXIT(condition, msg) \
+    do                                     \
+    {                                      \
+        bool check = (condition);          \
+        if (check)                         \
+            break;                         \
+        WK_CHECK(check, msg);              \
+        exit(EXIT_FAILURE);                \
     } while (false)
 
 #define WK_CHECK(condition, msg) \
@@ -76,6 +105,17 @@ typedef std::pair<bool, std::string> WK_FUNC_RETURN_TYPE;
         }                              \
     } while (false)
 
+#define WK_FUNC_CHECK_WITH_ERROR_HANDLE(condition, msg_, onFiled) \
+    do                                                            \
+    {                                                             \
+        if (!(condition))                                         \
+        {                                                         \
+            msg = (msg_);                                         \
+            onFiled();                                            \
+            WK_FUNC_RETURN();                                     \
+        }                                                         \
+    } while (false)
+
 #define WK_FUNC_CHECK_RET(ret)                                \
     do                                                        \
     {                                                         \
@@ -90,36 +130,9 @@ typedef std::pair<bool, std::string> WK_FUNC_RETURN_TYPE;
         WK_CHECK((ret_var__).first, (ret_var__).second); \
     } while (false)
 
-#define WK_CHECK_FUNC_RET_WITH_ASSERT(ret)                           \
-    do                                                               \
-    {                                                                \
-        const auto& ret_var__ = (ret);                               \
-        WK_CHECK_WITH_ASSERT((ret_var__).first, (ret_var__).second); \
+#define WK_CHECK_FUNC_RET_WITH_EXIT(ret)                           \
+    do                                                             \
+    {                                                              \
+        const auto& ret_var__ = (ret);                             \
+        WK_CHECK_WITH_EXIT((ret_var__).first, (ret_var__).second); \
     } while (false)
-
-typedef struct FunctionInfo
-{
-    char lib_path[256] = { 0 };
-    int threads        = 0;
-} FunctionInfo;
-
-typedef struct Result
-{
-    bool success                   = false;
-    char data[WUKONG_MESSAGE_SIZE] = { 0 };
-    uint64_t msg_id                = 0;
-} FuncResult;
-
-typedef struct InternalRequest
-{
-    char funcname[32]              = { 0 };
-    char args[WUKONG_MESSAGE_SIZE] = { 0 };
-    uint64_t request_id                = 0;
-} InternalRequest;
-
-typedef struct InternalResponse
-{
-    bool success                   = false;
-    char data[WUKONG_MESSAGE_SIZE] = { 0 };
-    uint64_t request_id                = 0;
-} InternalResponse;

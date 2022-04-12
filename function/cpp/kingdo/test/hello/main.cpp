@@ -7,17 +7,26 @@
 
 void faas_main(FaasHandle* handle)
 {
-    auto id = faas_call(handle, "who", "");
+    uint64_t requestID;
+    SPDLOG_DEBUG("faas_call who");
+    WK_FAAS_FUNC_3(faas_call, "who", "", &requestID);
     std::string result;
-    bool success = faas_get_call_result(handle, id, result);
-    if (success)
-    {
-        faas_setOutput(handle, fmt::format("Hello , {}", result));
-    }
-    else
-    {
-        std::string msg = fmt::format("failed call internal-function : ", result);
-        SPDLOG_ERROR(msg);
-        faas_setOutput(handle, msg);
-    }
+    SPDLOG_DEBUG("wait-result who");
+    WK_FAAS_FUNC_2(faas_get_call_result, requestID, result);
+    char* s;
+    std::string uuid;
+    size_t length = result.size();
+    SPDLOG_DEBUG("create_shm");
+    WK_FAAS_FUNC_3(faas_create_shm, length, uuid, reinterpret_cast<void**>(&s));
+    strcpy(s, result.c_str());
+    wukong::utils::Json json_data;
+    json_data.set("uuid", uuid);
+    json_data.setUInt64("length", length);
+    SPDLOG_DEBUG("faas_call toupper");
+    WK_FAAS_FUNC_3(faas_call, "toupper", json_data.serialize(), &requestID);
+    SPDLOG_DEBUG("wait-result toupper");
+    WK_FAAS_FUNC_2(faas_get_call_result, requestID, result);
+    SPDLOG_DEBUG("faas_setOutput {}", result);
+    faas_setOutput(handle, fmt::format("Hello , {}", result));
+    SPDLOG_DEBUG("Done");
 }

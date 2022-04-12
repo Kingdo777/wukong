@@ -11,6 +11,7 @@
 #include <wukong/utils/locks.h>
 #include <wukong/utils/os.h>
 #include <wukong/utils/process/DefaultSubProcess.h>
+#include <wukong/utils/struct.h>
 
 #define function_index(username, appname, funcname) (fmt::format("{}#{}#{}", username_, appname_, funcname))
 
@@ -56,29 +57,49 @@ public:
                 int slots_)
             : sub_process(std::move(process_))
             , handler(handler_)
+            , slots(slots_)
             , internal_request_fd(request_fd)
             , internal_response_fd(response_fd)
-            , slots(slots_)
         { }
+
+        Process(std::shared_ptr<wukong::utils::DefaultSubProcess> process_,
+                LocalGatewayClientHandler* handler_,
+                uint64_t free_size_)
+            : sub_process(std::move(process_))
+            , handler(handler_)
+            , free_size(free_size_)
+        { }
+
         std::shared_ptr<wukong::utils::DefaultSubProcess> sub_process;
         LocalGatewayClientHandler* handler;
+
+        /// for worker-func
+        std::atomic_int slots    = 0;
         int internal_request_fd  = -1;
         int internal_response_fd = -1;
-        std::atomic_int slots;
+
+        /// for storage-func
+        uint64_t free_size = 0;
     };
 
-    struct FuncProcesses
+    struct WorkerProcesses
     {
-        std::vector<std::shared_ptr<Process>> process_vector;
+        std::list<std::shared_ptr<Process>> process_vector;
         std::atomic_int func_slots = 0;
         std::shared_mutex func_processes_shared_mutex;
     };
 
-    WK_FUNC_RETURN_TYPE createFuncProcess(const wukong::proto::Function& func, Process** process, LocalGatewayClientHandler* handler);
+    WK_FUNC_RETURN_TYPE createWorkerFuncProcess(const wukong::proto::Function& func, Process** process, LocalGatewayClientHandler* handler);
 
-    WK_FUNC_RETURN_TYPE takeProcess(const std::string& funcname, Process** process, LocalGatewayClientHandler* handler);
+    WK_FUNC_RETURN_TYPE takeWorkerFuncProcess(const std::string& funcname, Process** process, LocalGatewayClientHandler* handler);
 
-    WK_FUNC_RETURN_TYPE backProcess(const std::string& funcname, Process* process);
+    WK_FUNC_RETURN_TYPE backWorkerFuncProcess(const std::string& funcname, Process* process);
+
+    WK_FUNC_RETURN_TYPE createStorageFuncProcess(size_t length, Process** process, LocalGatewayClientHandler* handler);
+
+    WK_FUNC_RETURN_TYPE takeStorageFuncProcess(StorageFuncOpType type, const wukong::proto::Message& message, Process** process, LocalGatewayClientHandler* handler);
+    WK_FUNC_RETURN_TYPE createShmDone(Process* process, const std::string& uuid, size_t length);
+    WK_FUNC_RETURN_TYPE deleteShmDone(Process* process, size_t length);
 
     std::string username() const
     {
@@ -93,7 +114,7 @@ public:
     int getInternalResponseFD(int internalRequestFD)
     {
         wukong::utils::ReadLock lock(internal_request_fd_2_response_fd_map_mutex);
-        WK_CHECK_WITH_ASSERT(internal_request_fd_2_response_fd_map.contains(internalRequestFD), "Dont find internalRequestFD");
+        WK_CHECK_WITH_EXIT(internal_request_fd_2_response_fd_map.contains(internalRequestFD), "Dont find internalRequestFD");
         return internal_request_fd_2_response_fd_map.at(internalRequestFD);
     }
 
@@ -116,8 +137,13 @@ private:
     boost::filesystem::path worker_func_exec_path;
     boost::filesystem::path storage_func_exec_path;
 
-    std::shared_mutex processes_mutex;
-    std::unordered_map<std::string, std::shared_ptr<FuncProcesses>> processes;
+    std::shared_mutex worker_processes_map_mutex;
+    std::unordered_map<std::string, std::shared_ptr<WorkerProcesses>> worker_processes_map;
+
+    std::mutex storageProcessesMutex;
+    std::list<std::shared_ptr<Process>> storageProcessList;
+    /// uuid -> <length, storageProcessList_index>
+    std::unordered_map<std::string, std::pair<size_t, Process*>> uuid2StorageProcessMap;
 
     std::shared_mutex read_fd_set_mutex;
     std::set<int> read_fd_set;

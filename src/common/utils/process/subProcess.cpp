@@ -113,19 +113,19 @@ namespace wukong::utils
     void SubProcess::setStandardFile(SubProcess::StandardPipe pipe, std::string_view file_path)
     {
         WK_CHECK_STATE_WITH_ASSERT(Created);
-        WK_CHECK_WITH_ASSERT(stdio[pipe].fd == pipe, "this stdPip has been rightly set");
+        WK_CHECK_WITH_EXIT(stdio[pipe].fd == pipe, "this stdPip has been rightly set");
         int fd;
         StdioType type;
         if (pipe == Stdin)
         {
             fd = open(std::string(file_path).c_str(), O_RDONLY);
-            WK_CHECK_WITH_ASSERT(fd != -1, fmt::format("can't open the file, {}", file_path));
+            WK_CHECK_WITH_EXIT(fd != -1, fmt::format("can't open the file, {}", file_path));
             type = READABLE_PIPE;
         }
         else
         {
             fd = creat(std::string(file_path).c_str(), WUKONG_FILE_CREAT_MODE);
-            WK_CHECK_WITH_ASSERT(fd != -1, fmt::format("can't open the file, {}", file_path));
+            WK_CHECK_WITH_EXIT(fd != -1, fmt::format("can't open the file, {}", file_path));
             type = WRITABLE_PIPE;
         }
         stdio.push_back({ fd, type });

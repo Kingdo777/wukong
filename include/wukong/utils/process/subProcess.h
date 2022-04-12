@@ -30,18 +30,18 @@
     } while (false)
 #define WK_CHECK_STATE_WITH_ASSERT(s1)                                              \
     do                                                                              \
-    {                                                                               \
-        WK_CHECK_WITH_ASSERT((state == (s1)), "SubProcess Status is Not Expected"); \
+    {                                                                             \
+        WK_CHECK_WITH_EXIT((state == (s1)), "SubProcess Status is Not Expected"); \
     } while (false)
 #define WK_CHECK_STATE_WITH_ASSERT_2(s1, s2)                                                         \
     do                                                                                               \
-    {                                                                                                \
-        WK_CHECK_WITH_ASSERT((state == (s1) || state == (s2)), "SubProcess Status is Not Expected"); \
+    {                                                                                              \
+        WK_CHECK_WITH_EXIT((state == (s1) || state == (s2)), "SubProcess Status is Not Expected"); \
     } while (false)
 #define WK_CHECK_STATE_WITH_ASSERT_3(s1, s2, s3)                                                                      \
     do                                                                                                                \
-    {                                                                                                                 \
-        WK_CHECK_WITH_ASSERT((state == (s1) || state == (s2) || state == (s3)), "SubProcess Status is Not Expected"); \
+    {                                                                                                               \
+        WK_CHECK_WITH_EXIT((state == (s1) || state == (s2) || state == (s3)), "SubProcess Status is Not Expected"); \
     } while (false)
 
 namespace wukong::utils
@@ -159,14 +159,14 @@ namespace wukong::utils
 
         uint64_t createPIPE(uint64_t type)
         {
-            WK_CHECK_WITH_ASSERT(stdio.size() >= 3, "count of stdio illegal");
+            WK_CHECK_WITH_EXIT(stdio.size() >= 3, "count of stdio illegal");
             stdio.push_back({ -1, type });
             return stdio.size() - 1;
         }
 
         [[nodiscard]] int getPIPE_FD(uint64_t index) const
         {
-            WK_CHECK_WITH_ASSERT(stdio.size() > index, "index is out of range");
+            WK_CHECK_WITH_EXIT(stdio.size() > index, "index is out of range");
             WK_CHECK_STATE(Running);
             return stdio[index].fd;
         }

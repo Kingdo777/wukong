@@ -98,7 +98,7 @@ std::pair<bool, std::string> InstanceProxy::remove(bool force)
 
 wukong::client::ClientServer* InstanceProxy::client()
 {
-    WK_CHECK_WITH_ASSERT(cs->isStarted(), "Client Server is not Started");
+    WK_CHECK_WITH_EXIT(cs->isStarted(), "Client Server is not Started");
     return cs;
 }
 
