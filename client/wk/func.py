@@ -3,7 +3,7 @@ import requests
 from invoke import task
 from os.path import exists, join
 from wk.utils.ping import test_connect
-from wk.utils.env import WUKONG_BUILD_DIR
+from wk.utils.env import WUKONG_BUILD_DIR, WUKONG_PYTHON_CODE_DIR
 
 
 @task
@@ -19,9 +19,12 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
         conf = json.loads(open(file, "r").read())
         username, appname, funcname, concurrency, memory, cpu, func_type = \
             conf['user'], conf['test'], conf['hello'], conf['concurrency'], conf['memory'], conf['cpu'], conf['type']
-    function_so_path = join(WUKONG_BUILD_DIR, "lib", "libfunc_{}.so".format(funcname))
-    if not exists(function_so_path):
-        print("{} is not exists".format(function_so_path))
+    if func_type == 'c/cpp':
+        function_path = join(WUKONG_BUILD_DIR, "lib", "libfunc_{}.so".format(funcname))
+    else:
+        function_path = join(WUKONG_PYTHON_CODE_DIR, "{}.py".format(funcname))
+    if not exists(function_path):
+        print("{} is not exists".format(function_path))
         return
     elif username == '':
         print("user is empty")
@@ -55,7 +58,7 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
             "cpu": str(cpu),
             "type": str(func_type)
         }
-        res = requests.post(url, data=open(function_so_path, "rb"), cookies=cookies)
+        res = requests.post(url, data=open(function_path, "rb"), cookies=cookies)
         if res.status_code == 200 and res.text == "Ok":
             print("Register Function `{}#{}#{}` Success".format(username, appname, funcname))
         else:
@@ -104,19 +107,21 @@ def funcs(context, username='', appname='', funcname=''):
     res = requests.post(url, cookies=cookies)
     if res.status_code == 200:
         func_list = json.loads(res.text)
-        print("{:^10}{:^10}{:^15}{:^15}{:^10}{:^15}{:^25}".format(
+        print("{:^10}{:^10}{:^15}{:^10}{:^15}{:^10}{:^15}{:^25}".format(
             "name",
             "user",
             "application",
+            "type",
             "concurrency",
             "memory",
             "cpu",
             "storage-key"))
         for func in func_list:
-            print("{:^10}{:^10}{:^15}{:^15}{:^10}{:^15}{:^25}".format(
+            print("{:^10}{:^10}{:^15}{:^10}{:^15}{:^10}{:^15}{:^25}".format(
                 func['name'],
                 func['user'],
                 func['application'],
+                func['type'],
                 func['concurrency'],
                 "{}MB".format(func['memory']),
                 "{:.1f} core".format(float(func['cpu']) / 1000.0),

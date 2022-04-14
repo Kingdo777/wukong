@@ -983,7 +983,7 @@ LoadBalance::Function::registerFuncCheck(const wukong::proto::Function& function
     else
     {
         // 对code进行ping验证，即将其加载之后，调佣其faas_ping()函数，需要得到"pong"的返回值
-        if (!pingCode(code))
+        if (function.type() == wukong::proto::Function_FunctionType_C_CPP && !pingCode(code))
         {
             msg = "can't ping to code,Please check your code";
         }

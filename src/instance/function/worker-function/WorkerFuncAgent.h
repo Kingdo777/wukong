@@ -6,20 +6,22 @@
 #define WUKONG_WORKERFUNCAGENT_H
 
 #include <boost/filesystem.hpp>
-#include <faas/function-interface.h>
+#include <faas/cpp/function-interface.h>
+#include <faas/python/function-interface.h>
 #include <pistache/async.h>
 #include <pistache/http.h>
 #include <pistache/reactor.h>
+#include <python3.8/Python.h>
 #include <utility>
 #include <wukong/proto/proto.h>
 #include <wukong/utils/config.h>
 #include <wukong/utils/dl.h>
 #include <wukong/utils/errors.h>
 #include <wukong/utils/log.h>
+#include <wukong/utils/macro.h>
 #include <wukong/utils/os.h>
 #include <wukong/utils/reactor/Reactor.h>
 #include <wukong/utils/redis.h>
-#include <wukong/utils/macro.h>
 #include <wukong/utils/struct.h>
 
 typedef void (*Faas_Main)(FaasHandle*);
@@ -62,11 +64,6 @@ private:
 class WorkerFuncAgent : public Reactor
 {
 public:
-    enum Type {
-        C_PP,
-        Python
-    };
-
     struct Options
     {
         friend class WorkerFuncAgent;
@@ -77,8 +74,6 @@ public:
 
         Options& threads(int val);
 
-        Options& type(Type val);
-
     private:
         int threads_;
         int read_fd;
@@ -86,7 +81,6 @@ public:
         int write_fd;
         int request_fd;
         int response_fd;
-        Type type_;
     };
 
     WorkerFuncAgent();
@@ -126,6 +120,16 @@ private:
 
     void loadFunc(Options& options);
 
+    bool isLoaded() const
+    {
+        return loaded;
+    }
+
+    bool isPython() const
+    {
+        return type == FunctionType::Python;
+    }
+
     std::shared_ptr<AgentHandler> pickOneHandler();
 
     void handlerInternalRequest();
@@ -148,10 +152,17 @@ private:
     int request_fd;
     int response_fd;
 
-    Type type;
+    FunctionType type;
+
+    bool loaded = false;
 
     wukong::utils::Lib lib;
     Faas_Main func_entry = nullptr;
+
+    PyObject* py_func_entry  = nullptr;
+    PyObject* py_func_module = nullptr;
 };
+
+void link();
 
 #endif // WUKONG_WORKERFUNCAGENT_H

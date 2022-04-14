@@ -3,7 +3,7 @@
 //
 
 #include <cstdio>
-#include <faas/function-interface.h>
+#include <faas/cpp/function-interface.h>
 #include <string>
 
 void faas_main(FaasHandle* handle)

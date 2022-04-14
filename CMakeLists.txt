@@ -72,7 +72,8 @@ add_subdirectory(src/common)
 add_subdirectory(src/global-gateway)
 add_subdirectory(src/invoker)
 add_subdirectory(src/instance)
-add_subdirectory(src/faas)
+add_subdirectory(src/faas/cpp)
+add_subdirectory(src/faas/python)
 
 
 add_subdirectory(tools)

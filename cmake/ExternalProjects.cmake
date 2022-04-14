@@ -139,10 +139,19 @@ target_link_libraries(common_dependencies INTERFACE uv)
 find_package(Boost COMPONENTS filesystem REQUIRED)
 target_link_libraries(common_dependencies INTERFACE Boost::filesystem)
 
+#----------------------- CPython ------------------------------------
+set(ENV{PKG_CONFIG_PATH} /usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH})
+pkg_check_modules(python-3.8 REQUIRED python3)
+target_link_libraries(common_dependencies INTERFACE python3.8)
+message(STATUS ${python-3.8_INCLUDE_DIRS})
+target_include_directories(common_dependencies INTERFACE ${python-3.8_INCLUDE_DIRS})
+
+
 #---------------------------其他库-------------------------------------
 target_link_libraries(common_dependencies INTERFACE
         pthread
         dl
+        util
         ${Protobuf_LIBRARIES}
         )
 

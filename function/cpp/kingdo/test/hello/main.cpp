@@ -2,7 +2,7 @@
 // Created by kingdo on 2022/3/14.
 //
 
-#include <faas/function-interface.h>
+#include <faas/cpp/function-interface.h>
 #include <string>
 
 void faas_main(FaasHandle* handle)

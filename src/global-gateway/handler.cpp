@@ -65,11 +65,17 @@ void GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request& request, 
     {
         wukong::proto::Message msg;
         msg.set_id(wukong::utils::uuid());
-        msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
 
         msg.set_user("kingdo");
         msg.set_application("test");
-        msg.set_function("hello");
+        if (request.resource() == "/python")
+        {
+            msg.set_function("py_hello");
+        }
+        else
+        {
+            msg.set_function("hello");
+        }
         msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
         msg.set_inputdata("wukong");
         msg.set_isasync(false);

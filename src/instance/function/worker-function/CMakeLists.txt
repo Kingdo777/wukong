@@ -5,4 +5,5 @@ target_link_libraries(instance-worker-func
         wukong::common_dependencies
         wukong::utils
         wukong::proto
+        wukong::function::interface::python
         )

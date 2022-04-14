@@ -7,10 +7,18 @@
 
 #include "macro.h"
 
+enum FunctionType {
+    Cpp,
+    Python
+};
+
 typedef struct FunctionInfo
 {
-    char lib_path[256] = { 0 };
-    int threads        = 0;
+    magic_t magic_number;
+    FunctionType type;
+    char func_path[512];
+    size_t path_size;
+    int threads;
 } FunctionInfo;
 
 typedef struct FuncResult

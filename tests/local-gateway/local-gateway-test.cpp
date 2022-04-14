@@ -243,7 +243,11 @@ private:
 
             msg.set_user("kingdo");
             msg.set_application("test");
-            msg.set_function("hello");
+            const std::string& func = request.resource();
+            if (func == "/")
+                msg.set_function("py_hello");
+            else
+                msg.set_function(func.substr(1));
             msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
             msg.set_inputdata("wukong");
             msg.set_isasync(false);

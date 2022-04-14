@@ -2,9 +2,8 @@
 // Created by kingdo on 2022/3/29.
 //
 
-#include "faas/function-interface.h"
-#include "../src/instance/function/storage-function/StorageFuncAgent.h"
 #include "../src/instance/function/worker-function/WorkerFuncAgent.h"
+#include <faas/cpp/function-interface.h>
 
 #define WK_FAAS_FUNC_CHECK(condition, op_name, wrong_msg)                          \
     do                                                                             \
@@ -20,6 +19,12 @@
 std::string faas_ping()
 {
     return "pong";
+}
+
+size_t faas_getInputSize(FaasHandle* handle)
+{
+    wukong::utils::UniqueRecursiveLock lock(handle->mutex);
+    return handle->msg_ptr->inputdata().size();
 }
 
 bool faas_getInput(FaasHandle* handle, std::string& result)
@@ -140,6 +145,7 @@ bool faas_create_shm(FaasHandle* handle, size_t length, std::string& uuid, void*
 }
 bool faas_get_shm(FaasHandle* handle, const std::string& uuid, size_t length, void** addr)
 {
+    wukong::utils::UniqueRecursiveLock lock(handle->mutex);
     if (handle->shmMap.contains(uuid))
     {
         const auto item = handle->shmMap.at(uuid);
@@ -157,6 +163,7 @@ bool faas_get_shm(FaasHandle* handle, const std::string& uuid, size_t length, vo
 }
 bool faas_delete_shm(FaasHandle* handle, const std::string& uuid)
 {
+    wukong::utils::UniqueRecursiveLock lock(handle->mutex);
     WK_FAAS_FUNC_CHECK(handle->shmMap.contains(uuid), "faas_delete_shm", fmt::format("uuid {} is not exists in shmMap", uuid));
     std::string funcname = fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Delete]);
     uint64_t request_id;

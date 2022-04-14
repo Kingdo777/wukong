@@ -42,6 +42,17 @@ static_assert(WUKONG_MESSAGE_SIZE <= PIPE_BUF,
 static_assert(WUKONG_MESSAGE_SIZE >= WUKONG_CACHE_LINE_SIZE * 2,
               "WUKONG_MESSAGE_SIZE is too small");
 
+#define WK_CHECK_WITH_ERROR_HANDLE_and_RETURN_VALUR(condition, msg, ret, onFiled) \
+    do                                                                            \
+    {                                                                             \
+        bool check = (condition);                                                 \
+        if (check)                                                                \
+            break;                                                                \
+        WK_CHECK(check, msg);                                                     \
+        (onFiled)(msg);                                                           \
+        return (ret);                                                             \
+    } while (false)
+
 #define WK_CHECK_WITH_ERROR_HANDLE_and_RETURN(condition, msg, onFiled) \
     do                                                                 \
     {                                                                  \

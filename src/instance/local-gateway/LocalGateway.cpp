@@ -47,16 +47,16 @@ bool LocalGateway::checkApp(const std::string& appname)
     return this->appname_ == appname;
 }
 
-bool LocalGateway::existFunCode(const std::string& funcname)
+bool LocalGateway::existFunCode(const std::string& funcname, bool is_python)
 {
-    auto lib_path = boost::filesystem::path("/tmp/wukong").append("func-code").append(funcname).append("lib.so");
-    return exists(lib_path);
+    return exists(getFunCodePath(funcname, is_python));
 }
 
-boost::filesystem::path LocalGateway::getFunCodePath(const std::string& funcname)
+boost::filesystem::path LocalGateway::getFunCodePath(const std::string& funcname, bool is_python)
 {
-    auto lib_path = boost::filesystem::path("/tmp/wukong").append("func-code").append(funcname).append("lib.so");
-    return lib_path;
+    if (is_python)
+        return boost::filesystem::path("/tmp/wukong/func-code/python").append(funcname + ".py");
+    return boost::filesystem::path("/tmp/wukong/func-code/cpp").append(funcname).append("lib.so");
 }
 
 wukong::proto::Function LocalGateway::getFunction(const std::string& funcname)
@@ -66,14 +66,14 @@ wukong::proto::Function LocalGateway::getFunction(const std::string& funcname)
     return functions.at(funcname);
 }
 
-std::pair<bool, std::string> LocalGateway::loadFuncCode(const std::string& funcname, bool update)
+std::pair<bool, std::string> LocalGateway::loadFuncCode(const std::string& funcname, bool is_python, bool update)
 {
     bool success    = false;
     std::string msg = "ok";
-    auto lib_path   = boost::filesystem::path("/tmp/wukong").append("func-code").append(funcname).append("lib.so");
-    if (exists(lib_path) && !update)
+    auto func_path  = getFunCodePath(funcname, is_python);
+    if (exists(func_path) && !update)
     {
-        msg = fmt::format("lib {} is exists", lib_path.string());
+        msg = fmt::format("lib {} is exists", func_path.string());
         return std::make_pair(success, msg);
     }
     wukong::utils::ReadLock lock(functions_mutex);
@@ -82,17 +82,17 @@ std::pair<bool, std::string> LocalGateway::loadFuncCode(const std::string& funcn
         msg = fmt::format("func {} is not found", funcname);
         return std::make_pair(success, msg);
     }
-    if (!exists(lib_path.parent_path()))
-        create_directories(lib_path.parent_path());
+    if (!exists(func_path.parent_path()))
+        create_directories(func_path.parent_path());
     const auto& func = functions.at(funcname);
-    redis.get_to_file(func.storagekey(), lib_path);
-    WK_CHECK_WITH_EXIT(exists(lib_path), "get code Failed");
-    if (!PingCode(lib_path))
+    redis.get_to_file(func.storagekey(), func_path);
+    WK_CHECK_WITH_EXIT(exists(func_path), "get code Failed");
+    if (!is_python && !PingCode(func_path))
     {
         msg = "Ping Code failed";
         return std::make_pair(success, msg);
     }
-    SPDLOG_DEBUG("Write lib to {} and Ping it Success", lib_path.string());
+    SPDLOG_DEBUG("Write lib to {} and Ping it Success", func_path.string());
     success = true;
     return std::make_pair(success, msg);
 }
@@ -121,10 +121,10 @@ std::pair<bool, std::string> LocalGateway::initApp(const std::string& username, 
     return std::make_pair(true, "ok");
 }
 
-bool LocalGateway::PingCode(const boost::filesystem::path& lib_path)
+bool LocalGateway::PingCode(const boost::filesystem::path& func_path)
 {
     wukong::utils::Lib lib;
-    if (lib.open(lib_path.c_str()))
+    if (lib.open(func_path.c_str()))
     {
         SPDLOG_ERROR(fmt::format("pingCode Error:{}", lib.errors()));
         lib.close();
@@ -147,10 +147,11 @@ WK_FUNC_RETURN_TYPE LocalGateway::createWorkerFuncProcess(const wukong::proto::F
 {
     WK_FUNC_START()
     auto sub_process_ptr = std::make_shared<wukong::utils::DefaultSubProcess>();
+    const auto& funcname  = func.functionname();
     std::string cmd      = worker_func_exec_path.string();
     uint flags           = 0; // TODO 这里应该施加资源限制
     wukong::utils::SubProcess::Options options(cmd);
-    options.Flags(flags).Env("WHO_AM_I", func.functionname());
+    options.Flags(flags).Env("WHO_AM_I", funcname);
     sub_process_ptr->setOptions(options);
     /// 启动子进程
     auto internal_request_fd_index = sub_process_ptr->createPIPE(
@@ -165,30 +166,35 @@ WK_FUNC_RETURN_TYPE LocalGateway::createWorkerFuncProcess(const wukong::proto::F
     int internal_request_fd  = sub_process_ptr->getPIPE_FD(internal_request_fd_index);
     int internal_response_fd = sub_process_ptr->getPIPE_FD(internal_response_fd_index);
 
-    if (!LocalGateway::existFunCode(func.functionname()))
+    bool is_python = func.type() == wukong::proto::Function_FunctionType_PYTHON;
+
+    if (!LocalGateway::existFunCode(funcname, is_python))
     {
-        auto load_res = loadFuncCode(func.functionname());
+        auto load_res = loadFuncCode(funcname, is_python);
         if (!load_res.first)
         {
             return load_res;
         }
     }
-    auto lib_path = getFunCodePath(func.functionname());
+    auto func_path = getFunCodePath(funcname, is_python);
     FunctionInfo functionInfo;
+    functionInfo.magic_number = MAGIC_NUMBER_WUKONG;
     /// TODO 应该根据资源限制以及并发数，确定一个比较合适的并发级别
     functionInfo.threads = 1;
-    WK_CHECK_WITH_EXIT(lib_path.size() < 256, fmt::format("path <{}> is to long!", lib_path.string()));
-    memcpy(functionInfo.lib_path, lib_path.c_str(), lib_path.size());
+    functionInfo.type    = (is_python) ? (FunctionType::Python) : (FunctionType::Cpp);
+    WK_CHECK_WITH_EXIT(func_path.size() < 256, fmt::format("path <{}> is to long!", func_path.string()));
+    memcpy(functionInfo.func_path, func_path.c_str(), func_path.size());
+    functionInfo.path_size = func_path.size();
     wukong::utils::write_2_fd(write_fd, functionInfo);
 
     /// 等待function启动完成
     wukong::utils::nonblock_ioctl(read_fd, 0);
     wukong::utils::read_from_fd(read_fd, &success);
     wukong::utils::nonblock_ioctl(read_fd, 1);
-    WK_FUNC_CHECK(success, fmt::format("Create Worker-Func for {} Failed", func.functionname()));
+    WK_FUNC_CHECK(success, fmt::format("Create Worker-Func for {} Failed", funcname));
 
-    SPDLOG_DEBUG("Create Worker-Func for {} Success", func.functionname());
-    auto& func_process = worker_processes_map.at(func.functionname());
+    SPDLOG_DEBUG("Create Worker-Func for {} Success", funcname);
+    auto& func_process = worker_processes_map.at(funcname);
     func_process->func_slots += (int)func.concurrency();
     const auto& process_shared_ptr = std::make_shared<Process>(std::move(sub_process_ptr), handler, internal_request_fd, internal_response_fd, (int)func.concurrency() - 1);
     func_process->process_vector.emplace_back(process_shared_ptr);

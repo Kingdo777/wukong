@@ -182,8 +182,8 @@ void LocalGatewayClientHandler::handleInternalRequest(int fd)
             }
             return;
         }
-        SPDLOG_DEBUG("handleInternalRequest {}", request.funcname);
         WK_CHECK_WITH_EXIT(MAGIC_NUMBER_CHECK(request.magic_number), "Data Wrong, Magic Number Check Failed");
+        SPDLOG_DEBUG("handleInternalRequest {}", request.funcname);
         wukong::proto::Message msg;
 
         msg.set_id(request.request_id);
@@ -212,7 +212,7 @@ void LocalGatewayClientHandler::handleExternalReadyQueue()
         if (!entry)
             break;
         const auto& msg = entry->msg;
-        SPDLOG_DEBUG("Handle External Request ， call Func `{}`", msg.function());
+        SPDLOG_DEBUG("Handle External Request , call Func `{}`", msg.function());
         LocalGateway::Process* process;
         auto ret = lg->takeWorkerFuncProcess(msg.function(), &process, this);
         if (ret.first)

@@ -10,3 +10,6 @@ PROJ_ROOT = environ.get("WUKONG_PROJ_ROOT", "{}/CLionProjects/wukong".format(HOM
 
 _BUILD_DIR = environ.get("WUKONG_BUILD_DIR", "cmake-build-debug/out")
 WUKONG_BUILD_DIR = join(PROJ_ROOT, _BUILD_DIR)
+
+_PYTHON_CODE_DIR = environ.get("WUKONG_PYTHON_CODE_DIR", "function/python/fucntion")
+WUKONG_PYTHON_CODE_DIR = join(PROJ_ROOT, _PYTHON_CODE_DIR)

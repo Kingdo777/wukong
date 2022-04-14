@@ -10,6 +10,7 @@
 #include <wukong/proto/proto.h>
 #include <wukong/utils/locks.h>
 #include <wukong/utils/shm/ShareMemoryObject.h>
+#include <wukong/utils/struct.h>
 
 #define WK_FAAS_FUNC_HANDLE_RET(funcname, ret)                                                     \
     do                                                                                             \
@@ -58,6 +59,8 @@ struct FaasHandle
     std::string errors_; // 打印错误信息
     WorkerFuncAgent* agent;
 };
+
+size_t faas_getInputSize(FaasHandle* handle);
 
 bool faas_getInput(FaasHandle* handle, std::string&);
 

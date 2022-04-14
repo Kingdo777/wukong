@@ -28,13 +28,13 @@ public:
 
     bool checkApp(const std::string& appname_);
 
-    static bool existFunCode(const std::string& funcname);
+    static bool existFunCode(const std::string& funcname, bool is_python = false);
 
-    static boost::filesystem::path getFunCodePath(const std::string& funcname);
+    static boost::filesystem::path getFunCodePath(const std::string& funcname, bool is_python = false);
 
     wukong::proto::Function getFunction(const std::string& funcname);
 
-    std::pair<bool, std::string> loadFuncCode(const std::string& funcname, bool update = false);
+    std::pair<bool, std::string> loadFuncCode(const std::string& funcname, bool is_python = false, bool update = false);
 
     std::pair<bool, std::string> initApp(const std::string& username_, const std::string& appname_);
 

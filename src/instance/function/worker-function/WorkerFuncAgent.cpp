@@ -47,7 +47,6 @@ WorkerFuncAgent::Options::Options()
     , write_fd(wukong::utils::Config::InstanceFunctionDefaultWriteFD())
     , request_fd(wukong::utils::Config::InstanceFunctionDefaultInternalRequestFD())
     , response_fd(wukong::utils::Config::InstanceFunctionDefaultInternalResponseFD())
-    , type_(C_PP)
 { }
 
 WorkerFuncAgent::Options WorkerFuncAgent::Options::options()
@@ -61,12 +60,6 @@ WorkerFuncAgent::Options& WorkerFuncAgent::Options::threads(int val)
     return *this;
 }
 
-WorkerFuncAgent::Options& WorkerFuncAgent::Options::type(WorkerFuncAgent::Type val)
-{
-    type_ = val;
-    return *this;
-}
-
 WorkerFuncAgent::WorkerFuncAgent()
     : Reactor()
     , read_fd(-1)
@@ -74,14 +67,13 @@ WorkerFuncAgent::WorkerFuncAgent()
     , write_fd(-1)
     , request_fd(-1)
     , response_fd(-1)
-    , type(C_PP)
+    , type(FunctionType::Cpp)
     , lib()
 { }
 
 void WorkerFuncAgent::init(WorkerFuncAgent::Options& options)
 {
     loadFunc(options);
-    type = options.type_;
     poller.addFd(read_fd,
                  Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Read),
                  Pistache::Polling::Tag(read_fd),
@@ -111,15 +103,49 @@ void WorkerFuncAgent::run()
 
 void WorkerFuncAgent::shutdown()
 {
-    if (func_entry)
-        lib.close();
+    if (isLoaded())
+    {
+        switch (type)
+        {
+        case Cpp: {
+            lib.close();
+        }
+        case Python: {
+            Py_XDECREF(py_func_entry);
+            Py_DECREF(py_func_module);
+            Py_FinalizeEx();
+            break;
+        }
+        }
+    }
+
     Reactor::shutdown();
 }
 
 void WorkerFuncAgent::doExec(FaasHandle* h)
 {
-    WK_CHECK_WITH_EXIT(func_entry != nullptr, "func_entry is null");
-    func_entry(h);
+    switch (type)
+    {
+    case Cpp: {
+        WK_CHECK_WITH_EXIT(func_entry != nullptr, "func_entry is null");
+        func_entry(h);
+        break;
+    }
+    case Python: {
+        WK_CHECK_WITH_EXIT(py_func_entry != nullptr, "func_entry is null");
+        PyObject* pythonFuncArgs = PyTuple_New(1);
+        PyTuple_SetItem(pythonFuncArgs, 0, PyLong_FromVoidPtr(h));
+        PyObject* returnValue = PyObject_CallObject(py_func_entry, pythonFuncArgs);
+        if (PyErr_Occurred())
+        {
+            PyErr_Print();
+        }
+        if (pythonFuncArgs)
+            Py_DECREF(pythonFuncArgs);
+        Py_DECREF(returnValue);
+        break;
+    }
+    }
 }
 
 void WorkerFuncAgent::finishExec(wukong::proto::Message msg)
@@ -213,22 +239,55 @@ void WorkerFuncAgent::loadFunc(WorkerFuncAgent::Options& options)
     FunctionInfo func_info;
     wukong::utils::nonblock_ioctl(read_fd, 0);
     wukong::utils::read_from_fd(read_fd, &func_info);
+    type = func_info.type;
+    WK_CHECK_WITH_EXIT(MAGIC_NUMBER_CHECK(func_info.magic_number), "Data Wrong, Magic Check Failed!");
 
     wukong::utils::nonblock_ioctl(write_fd, 0);
     wukong::utils::nonblock_ioctl(read_fd, 1);
     wukong::utils::nonblock_ioctl(request_fd, 0);
     wukong::utils::nonblock_ioctl(response_fd, 1);
 
-    auto lib_path = boost::filesystem::path(std::string { func_info.lib_path, 256 });
-    WK_CHECK_WITH_EXIT(exists(lib_path), "Please Right Set read_from_fd");
+    auto func_path = boost::filesystem::path(std::string { func_info.func_path, func_info.path_size });
+    WK_CHECK_WITH_EXIT(exists(func_path), fmt::format("{} is not exists", func_path.string()));
     WK_CHECK_WITH_EXIT(func_info.threads >= 1, "func Concurrency < 1 ?");
     options.threads(func_info.threads);
-    lib.open(lib_path.c_str());
-    if (lib.sym("_Z9faas_mainP10FaasHandle", (void**)(&func_entry)))
+
+    switch (type)
     {
-        SPDLOG_ERROR(fmt::format("load Code Error:{}", lib.errors()));
-        assert(false);
+    case Cpp: {
+        lib.open(func_path.c_str());
+        if (lib.sym("_Z9faas_mainP10FaasHandle", (void**)(&func_entry)))
+        {
+            SPDLOG_ERROR(fmt::format("load Code Error:{}", lib.errors()));
+            assert(false);
+        }
+        break;
     }
+    case Python: {
+        Py_InitializeEx(0);
+        const boost::filesystem::path& workingDir(func_path);
+        PyObject* sys  = PyImport_ImportModule("sys");
+        PyObject* path = PyObject_GetAttrString(sys, "path");
+        PyList_Append(path, PyUnicode_FromString(workingDir.parent_path().c_str()));
+        auto file        = workingDir.filename().string();
+        auto module_name = file.substr(0, file.size() - strlen(".py"));
+        py_func_module   = PyImport_ImportModule(module_name.c_str());
+        if (PyErr_Occurred())
+        {
+            PyErr_Print();
+        }
+        WK_CHECK_WITH_EXIT(py_func_module, fmt::format("Failed to load module `{}`", module_name));
+        py_func_entry = PyObject_GetAttrString(py_func_module, "faas_main");
+        if (PyErr_Occurred())
+        {
+            PyErr_Print();
+        }
+        WK_CHECK_WITH_EXIT(py_func_module, fmt::format("Failed to load Function `faas_main` from module `{}`", module_name));
+        break;
+    }
+    }
+
+    loaded = true;
 }
 
 std::shared_ptr<AgentHandler> WorkerFuncAgent::pickOneHandler()
@@ -323,4 +382,9 @@ void WorkerFuncAgent::handlerInternalRequest()
         wukong::utils::write_2_fd(request_fd, request);
         internalRequestDeferredMap.emplace(item->request_id, std::move(item->deferred));
     }
+}
+
+void link()
+{
+    interface_link();
 }
