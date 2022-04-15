@@ -3,7 +3,8 @@
 //
 
 #include <wukong/utils/struct.h>
-const char* StorageFuncOpTypeName[] = {
+const char* StorageFuncOpTypeName[Unknown] = {
     "Create",
-    "Delete"
+    "Delete",
+    "Get"
 };

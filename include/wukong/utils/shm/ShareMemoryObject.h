@@ -40,6 +40,11 @@ public:
 
     static WK_FUNC_RETURN_TYPE uuid_check(const std::string& uuid);
 
+    static size_t uuid_size()
+    {
+        return strlen(ShareMemoryObjectUUIDPrefix) + ShareMemoryObjectUUIDRandomStringSize;
+    }
+
     [[nodiscard]] std::string uuid() const;
 
     [[nodiscard]] off64_t size() const;

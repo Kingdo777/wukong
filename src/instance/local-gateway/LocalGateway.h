@@ -101,6 +101,8 @@ public:
     WK_FUNC_RETURN_TYPE createShmDone(Process* process, const std::string& uuid, size_t length);
     WK_FUNC_RETURN_TYPE deleteShmDone(Process* process, size_t length);
 
+    WK_FUNC_RETURN_TYPE getStorageShm(const std::string& uuid, std::string& result);
+
     std::string username() const
     {
         return username_;

@@ -101,6 +101,10 @@ void LocalGatewayClientHandler::handleInternalStorageResult(const FuncResult& re
     {
         type = StorageFuncOpType::Delete;
     }
+    else if (funcname == fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Get]))
+    {
+        type = StorageFuncOpType::Get;
+    }
     wukong::utils::Json json(std::string(result.data, result.data_size));
     std::string uuid = json.get("uuid");
     size_t length    = json.getUInt64("length", 0);
@@ -115,6 +119,7 @@ void LocalGatewayClientHandler::handleInternalStorageResult(const FuncResult& re
         lg->deleteShmDone(process_ptr, length);
         break;
     }
+    case Get:
     case Unknown: {
         WK_CHECK_WITH_EXIT(false, "Unreachable");
     }
@@ -252,6 +257,18 @@ void LocalGatewayClientHandler::handleStorageFunctionInternalRequest(const wukon
     else if (funcname == fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Delete]))
     {
         type = StorageFuncOpType::Delete;
+    }
+    else if (funcname == fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Get]))
+    {
+        type = StorageFuncOpType::Get;
+        wukong::utils::Json json;
+        const auto& uuid = msg.inputdata();
+        std::string shm;
+        WK_CHECK_FUNC_RET(lg->getStorageShm(uuid, shm));
+        FuncResult result(true, shm, msg.id());
+        wukong::utils::write_2_fd(responseFD, result);
+        SPDLOG_DEBUG("Return getSHM Request : {}", shm);
+        return;
     }
     auto ret = lg->takeStorageFuncProcess(type, msg, &process, this);
     if (ret.first)

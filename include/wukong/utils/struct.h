@@ -23,6 +23,25 @@ typedef struct FunctionInfo
 
 typedef struct FuncResult
 {
+public:
+    FuncResult() = default;
+    FuncResult(bool success_, const std::string& data_, uint64_t request_id_)
+        : magic_number(MAGIC_NUMBER_WUKONG)
+        , success(success_)
+        , data {}
+        , data_size(data_.size())
+        , request_id(request_id_)
+    {
+        if (data_size > WUKONG_MESSAGE_SIZE)
+        {
+            success = false;
+            strcpy(data, "data is to large!");
+        }
+        else
+        {
+            strcpy(data, data_.data());
+        }
+    }
     magic_t magic_number;
     bool success;
     char data[WUKONG_MESSAGE_SIZE];
@@ -41,6 +60,7 @@ typedef struct InternalRequest
 enum StorageFuncOpType {
     Create = 0,
     Delete = 1,
+    Get    = 2,
     Unknown
 };
 extern const char* StorageFuncOpTypeName[Unknown];

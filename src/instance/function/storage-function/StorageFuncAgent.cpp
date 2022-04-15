@@ -125,6 +125,10 @@ void StorageFuncAgent::onReady(const Pistache::Polling::Event& event)
         {
             type = StorageFuncOpType::Delete;
         }
+        else if (funcname == fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Get]))
+        {
+            type = StorageFuncOpType::Get;
+        }
 
         switch (type)
         {
@@ -136,6 +140,7 @@ void StorageFuncAgent::onReady(const Pistache::Polling::Event& event)
             handleDelete(msg.inputdata(), request_id);
             break;
         }
+        case Get:
         default:
             WK_CHECK_WITH_ERROR_HANDLE_and_RETURN(false,
                                                   fmt::format("Data Wrong : Unknown OP type : {}", type),

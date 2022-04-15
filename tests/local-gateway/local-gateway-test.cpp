@@ -301,6 +301,7 @@ public:
 
 int main()
 {
+    SPDLOG_ERROR("记得，需要配置NEED_RETURN_PORT=1 和 ENDPOINT_PORT=0 两个环境变量")
     int fds[2][2];
     for (auto& fd : fds)
     {

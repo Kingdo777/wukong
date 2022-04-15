@@ -11,13 +11,13 @@
 #include <wukong/utils/timing.h>
 
 #include <boost/filesystem.hpp>
-#include <python3.8/Python.h>
+#include <Python.h>
 
 #include "faas/python/function-interface.h"
 
 #define FAAS_MAIN_FUNC_NAME "faas_main"
 
-void link()
+void link_()
 {
     interface_link();
 }

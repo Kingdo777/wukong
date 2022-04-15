@@ -57,7 +57,7 @@ function(wukong_lib lib_name)
     file(GLOB SOURCES_FILE */*.cpp *.cpp *.cc)
     file(GLOB HEADERS_FILE ${WUKONG_INCLUDE_DIR}/wukong/${lib_name}/*.h)
     # 生成库文件, 注意, 如果自定义各个lib之间存在引用关系, 需要手动添加
-    add_library(${lib_name} ${SOURCES_FILE} ${HEADERS_FILE})
+    add_library(${lib_name} STATIC ${SOURCES_FILE} ${HEADERS_FILE})
     # 在这里如果不用PUBLIC, 那么使用这些库的可执行程序, 将无法引用第三方库的头文件. 因为我们自己的库的头文件中会引用这些头文件,
     # 这样当其他可执行程序如果引用了我们的自己的库的头文件, 就会提示找不到第三方库的头文件
     target_link_libraries(${lib_name} PRIVATE wukong::common_dependencies)

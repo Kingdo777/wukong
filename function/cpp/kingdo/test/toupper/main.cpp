@@ -14,8 +14,9 @@ void faas_main(FaasHandle* handle)
     std::string uuid = json_data.get("uuid");
     size_t length    = json_data.getUInt64("length", 0);
     char* s;
-    WK_FAAS_FUNC_3(faas_get_shm, uuid, length, reinterpret_cast<void**>(&s));
+    WK_FAAS_FUNC_2(faas_get_shm, uuid, reinterpret_cast<void**>(&s));
     std::string result { s, length };
+    SPDLOG_DEBUG("shm-result: {}", result);
     WK_FAAS_FUNC_1(faas_delete_shm, uuid);
     for (auto& ch : result)
     {

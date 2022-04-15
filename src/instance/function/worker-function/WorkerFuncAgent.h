@@ -11,7 +11,7 @@
 #include <pistache/async.h>
 #include <pistache/http.h>
 #include <pistache/reactor.h>
-#include <python3.8/Python.h>
+#include <Python.h>
 #include <utility>
 #include <wukong/proto/proto.h>
 #include <wukong/utils/config.h>

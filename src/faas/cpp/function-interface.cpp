@@ -129,7 +129,7 @@ bool faas_create_shm(FaasHandle* handle, size_t length, std::string& uuid, void*
     *addr = nullptr;
     wukong::utils::UniqueRecursiveLock lock(handle->mutex);
     std::string funcname = fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Create]);
-    uint64_t request_id  = wukong::utils::uuid();
+    uint64_t request_id;
     WK_FAAS_FUNC_CHECK(faas_call(handle, funcname, std::to_string(length), &request_id), "faas_create_shm.faas_call", handle->errors());
     std::string result;
     WK_FAAS_FUNC_CHECK(faas_get_call_result(handle, request_id, result), "faas_create_shm.faas_get_call_result", handle->errors());
@@ -143,18 +143,34 @@ bool faas_create_shm(FaasHandle* handle, size_t length, std::string& uuid, void*
     handle->shmMap.emplace(uuid, std::make_pair(*addr, length));
     return true;
 }
-bool faas_get_shm(FaasHandle* handle, const std::string& uuid, size_t length, void** addr)
+bool faas_get_shm(FaasHandle* handle, const std::string& uuid, void** addr, size_t* len)
 {
     wukong::utils::UniqueRecursiveLock lock(handle->mutex);
     if (handle->shmMap.contains(uuid))
     {
         const auto item = handle->shmMap.at(uuid);
-        WK_FAAS_FUNC_CHECK(item.second == length, "faas_get_shm",
-                           fmt::format("The length {} in Parameter is inconsistent with that cached in the shmMap {}",
-                                       length, item.second));
-        *addr = item.first;
+
+        if (len)
+            *len = item.second;
+        if (addr)
+            *addr = item.first;
         return true;
     }
+    std::string funcname = fmt::format("{}/{}", STORAGE_FUNCTION_NAME, StorageFuncOpTypeName[StorageFuncOpType::Get]);
+    uint64_t request_id;
+    WK_FAAS_FUNC_CHECK(faas_call(handle, funcname, uuid, &request_id), "faas_get_shm.faas_call", handle->errors());
+    std::string result;
+    WK_FAAS_FUNC_CHECK(faas_get_call_result(handle, request_id, result), "faas_get_shm.faas_get_call_result", handle->errors());
+    wukong::utils::Json json_data(result);
+    const auto uuid_ = json_data.get("uuid");
+    WK_FAAS_FUNC_CHECK(uuid_ == uuid, "faas_get_shm.check json date", "uuid_ != uuid");
+    size_t length = json_data.getUInt64("length", 0);
+    void* addr_;
+    if (len)
+        *len = length;
+    if (!addr)
+        addr = &addr_;
+    WK_FAAS_FUNC_CHECK(length > 0, "faas_get_shm.check json date", "length <= 0");
     auto ret = ShareMemoryObject::open(uuid, length, addr, false);
     WK_FAAS_FUNC_CHECK(ret.first, "faas_get_shm.ShareMemoryObject::open", ret.second);
     WK_CHECK_WITH_EXIT(*addr != nullptr, "Unreachable");

@@ -34,7 +34,8 @@ std::string faas_ping();
 struct FaasHandle
 {
     FaasHandle(std::shared_ptr<wukong::proto::Message> msg_pyr_, WorkerFuncAgent* agent_)
-        : msg_ptr(std::move(msg_pyr_))
+        : magic_number(MAGIC_NUMBER_WUKONG)
+        , msg_ptr(std::move(msg_pyr_))
         , agent(agent_)
     { }
 
@@ -51,6 +52,8 @@ struct FaasHandle
     {
         return msg_ptr->function();
     }
+
+    uint64_t magic_number;
 
     std::shared_ptr<wukong::proto::Message> msg_ptr;
     std::unordered_map<uint64_t, Pistache::Async::Promise<std::string>> internalCallResultMap;
@@ -77,6 +80,6 @@ bool faas_result_is_complete(FaasHandle* handle, uint64_t request_id);
 
 bool faas_delete_shm(FaasHandle* handle, const std::string& uuid);
 bool faas_create_shm(FaasHandle* handle, size_t length, std::string& uuid, void** addr);
-bool faas_get_shm(FaasHandle* handle, const std::string& uuid, size_t length, void** addr);
+bool faas_get_shm(FaasHandle* handle, const std::string& uuid, void** addr, size_t* length = nullptr);
 
 #endif // WUKONG_FUNCTION_INTERFACE_H

@@ -147,7 +147,7 @@ WK_FUNC_RETURN_TYPE LocalGateway::createWorkerFuncProcess(const wukong::proto::F
 {
     WK_FUNC_START()
     auto sub_process_ptr = std::make_shared<wukong::utils::DefaultSubProcess>();
-    const auto& funcname  = func.functionname();
+    const auto& funcname = func.functionname();
     std::string cmd      = worker_func_exec_path.string();
     uint flags           = 0; // TODO 这里应该施加资源限制
     wukong::utils::SubProcess::Options options(cmd);
@@ -355,6 +355,7 @@ WK_FUNC_RETURN_TYPE LocalGateway::takeStorageFuncProcess(StorageFuncOpType type,
         *process = uuid2StorageProcessMap.at(uuid).second;
         break;
     }
+    case Get:
     default:
         WK_FUNC_CHECK(false, fmt::format("Unknown OP type : {}", type));
     }
@@ -374,7 +375,21 @@ WK_FUNC_RETURN_TYPE LocalGateway::deleteShmDone(Process* process, size_t length)
 {
     WK_FUNC_START()
     wukong::utils::UniqueLock lock(storageProcessesMutex);
+    // TODO 引用计数-1
     process->free_size += length;
+    WK_FUNC_END()
+}
+
+WK_FUNC_RETURN_TYPE LocalGateway::getStorageShm(const std::string& uuid, std::string& result)
+{
+    WK_FUNC_START()
+    wukong::utils::UniqueLock lock(storageProcessesMutex);
+    // TODO 此时应该从其他节点寻找
+    WK_FUNC_CHECK(uuid2StorageProcessMap.contains(uuid), "Now don't support Across Instance！");
+    wukong::utils::Json json;
+    json.set("uuid", uuid);
+    json.setUInt64("length", uuid2StorageProcessMap.at(uuid).first);
+    result = json.serialize();
     WK_FUNC_END()
 }
 
