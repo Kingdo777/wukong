@@ -31,9 +31,12 @@ void wukong::utils::initLog(std::string exec_name)
         CHECK_MIN_LEVEL(spdlog::level::debug)
         spdlog::set_level(spdlog::level::debug);
     }
-    else
+    else if (Config::LogLevel() == "info")
     {
         spdlog::set_level(spdlog::level::info);
+    }
+    else{
+        spdlog::set_level(spdlog::level::off);
     }
 }
 

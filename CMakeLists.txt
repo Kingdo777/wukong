@@ -11,7 +11,7 @@ endif ()
 # -Wall 显示所有警告信息(https://blog.csdn.net/cjtstrive/article/details/85375477)
 # -fPIC 作用于编译阶段，告诉编译器产生与位置无关代码(Position-Independent Code)（http://blog.sina.com.cn/s/blog_54f82cc201011op1.html）
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall")
-# -g 使可执行文件便于调试(https://blog.csdn.net/andrewgithub/article/details/108962057)
+# -g 生成操作系统原生格式(stabs, COFF, XCOFF, or DWARF)的调试信息，gdb可以使用这些调试信息(http://walkerdu.com/2020/04/22/gcc_optimization/)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CMAKE_CXX_STANDARD 20)
 

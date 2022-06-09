@@ -35,7 +35,7 @@ WK_FUNC_RETURN_TYPE ShareMemoryObject::create()
         ::shm_unlink(shm_path.c_str());
     });
     memset(address, 0, length_);
-    ret     = close(fd);
+    close(fd);
     created = true;
     WK_FUNC_END()
 }

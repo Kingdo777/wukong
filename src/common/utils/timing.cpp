@@ -63,7 +63,7 @@ namespace wukong::utils
             int count     = timerCounts[p.second];
             double avg    = millis / count;
             SPDLOG_INFO(
-                "%-11.2f %-10.3f %5i  %s", millis, avg, count, p.second.c_str());
+                "{:-11.2f} {:-10.3f} {:5}  {}", millis, avg, count, p.second.c_str());
         }
     }
 }

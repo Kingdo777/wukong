@@ -2,6 +2,7 @@ include(FindGit)
 find_package(Git REQUIRED)
 include(FetchContent)
 find_package(Threads REQUIRED)
+# sudo apt-get install protobuf-compiler
 find_package(Protobuf REQUIRED)
 
 #------------- 将所有的第三方包, 全部打包成一个依赖库 ------------------------
@@ -9,6 +10,7 @@ find_package(Protobuf REQUIRED)
 add_library(common_dependencies INTERFACE)
 
 #----------------------- RapidJSON ------------------------------------
+# cmake -DRAPIDJSON_BUILD_DOC=false -DRAPIDJSON_BUILD_EXAMPLES=false -DRAPIDJSON_BUILD_TESTS=false ..
 find_package(RapidJSON QUIET)
 if (NOT RapidJSON_FOUND)
     message("RapidJSON not found. Downloading it from source...")
@@ -28,6 +30,7 @@ else ()
 endif ()
 
 #----------------------- SpdLog ------------------------------------
+#cmake -DSPDLOG_BUILD_ALL=false -DSPDLOG_BUILD_SHARED=false -DSPDLOG_ENABLE_PCH=false -DSPDLOG_BUILD_EXAMPLE_HO=false -DSPDLOG_BUILD_TESTS_HO=false -DSPDLOG_BUILD_BENCH=false -DSPDLOG_SANITIZE_ADDRESS=false -DSPDLOG_BUILD_WARNINGS=false ..
 find_package(spdlog QUIET)
 if (NOT spdlog_FOUND)
     message("SpdLog not found. Downloading it from source...")
@@ -55,6 +58,7 @@ endif ()
 target_link_libraries(common_dependencies INTERFACE spdlog)
 
 #----------------------- pistache ------------------------------------
+# ./install
 find_package(PkgConfig REQUIRED)
 set(ENV{PKG_CONFIG_PATH}
         /usr/local/lib64/pkgconfig:$ENV{PKG_CONFIG_PATH})
@@ -78,6 +82,7 @@ else ()
 endif ()
 
 #----------------------- hiredis ------------------------------------
+# cmake -DENABLE_SSL=false -DDISABLE_TESTS=true -DENABLE_SSL_TESTS=false
 find_package(hiredis QUIET)
 if (NOT hiredis_FOUND)
     message("hiredis not found.  Downloading it from source...")
@@ -115,6 +120,7 @@ endif ()
 target_link_libraries(common_dependencies INTERFACE fmt)
 
 #----------------------- libuv ------------------------------------
+# cmake -DDBUILD_TESTING=false -DLIBUV_BUILD_TESTS=false -DLIBUV_BUILD_BENCH=false ..
 find_package(libuv QUIET)
 if (NOT libuv_FOUND)
     message("Libuv not found. Downloading it from source...")
@@ -132,13 +138,15 @@ endif ()
 target_link_libraries(common_dependencies INTERFACE uv)
 
 #----------------------- Boost ------------------------------------
+# sudo apt-get install libboost-filesystem-dev
 # 因为boost太大了，不适合使用FetchContent进行安装
 find_package(Boost COMPONENTS filesystem REQUIRED)
 target_link_libraries(common_dependencies INTERFACE Boost::filesystem)
 
 #----------------------- CPython ------------------------------------
-set(ENV{PKG_CONFIG_PATH} /usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH})
-pkg_check_modules(python-3.8 REQUIRED python3)
+# sudo apt-get install python3.8-dev
+# pkg-config --list-all | grep python
+pkg_check_modules(python-3.8 REQUIRED python-3.8)
 target_link_libraries(common_dependencies INTERFACE python3.8)
 message(STATUS ${python-3.8_INCLUDE_DIRS})
 target_include_directories(common_dependencies INTERFACE ${python-3.8_INCLUDE_DIRS})

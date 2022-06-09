@@ -70,7 +70,8 @@ void GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request& request, 
         msg.set_application("test");
         if (request.resource() == "/python")
         {
-            msg.set_function("py_hello");
+//            msg.set_function("py_hello");
+            msg.set_function("py_noop");
         }
         else
         {

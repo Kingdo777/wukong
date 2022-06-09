@@ -301,7 +301,7 @@ public:
 
 int main()
 {
-    SPDLOG_ERROR("记得，需要配置NEED_RETURN_PORT=1 和 ENDPOINT_PORT=0 两个环境变量")
+    SPDLOG_ERROR("记得，需要配置NEED_RETURN_PORT=1 和 ENDPOINT_PORT=0 两个环境变量");
     int fds[2][2];
     for (auto& fd : fds)
     {
@@ -326,7 +326,7 @@ int main()
         WK_CHECK_WITH_EXIT(instancePort > 0, fmt::format("can't get Instance Port"));
 
         wukong::client::ClientServer cs;
-        auto opts = Pistache::Http::Client::options().threads(wukong::utils::Config::ClientNumThreads()).maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
+        auto opts = Pistache::Http::Client::options().threads(20).maxConnectionsPerHost(wukong::utils::Config::ClientMaxConnectionsPerHost());
         cs.setHandler(std::make_shared<LoadBalanceClientHandler>(&cs));
         cs.start(opts);
 

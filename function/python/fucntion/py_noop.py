@@ -1,11 +1,9 @@
-import ctypes
-
-lib = ctypes.CDLL(None)
+import wkpython
+import time
 
 
 def faas_main(handle):
-    print(handle)
-    print(lib.faas_getInputSize_py)
-    print(lib.faas_getInput_py)
-    print(lib.faas_setOutput_py)
+    output = b"Hello, World"
+    time.sleep(30)
+    wkpython.core.set_output(handle, output)
     return 0

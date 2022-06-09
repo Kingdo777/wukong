@@ -12,3 +12,4 @@ docker/wukong-base.dockerfile
 /deps/
 
 /venv/
+/__pycache__/

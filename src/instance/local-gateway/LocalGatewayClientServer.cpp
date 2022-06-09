@@ -145,7 +145,7 @@ void LocalGatewayClientHandler::handleResult(int fd)
             }
             return;
         }
-        SPDLOG_DEBUG("handlerInternalResponse {}", result.data);
+        //        SPDLOG_DEBUG("handlerInternalResponse {}", result.data);
         WK_CHECK(ret == sizeof(result), "read_from_fd failed");
         WK_CHECK_WITH_EXIT(MAGIC_NUMBER_CHECK(result.magic_number), "Data Wong, Magic Num Check is Failed");
         result.data[result.data_size] = 0;
