@@ -13,37 +13,6 @@
 #include <wukong/utils/os.h>
 #include <wukong/utils/signal-tool.h>
 
-#define WK_CHECK_STATE(s1)                                              \
-    do                                                                  \
-    {                                                                   \
-        WK_CHECK((state == (s1)), "SubProcess Status is Not Expected"); \
-    } while (false)
-#define WK_CHECK_STATE_2(s1, s2)                                                         \
-    do                                                                                   \
-    {                                                                                    \
-        WK_CHECK((state == (s1) || state == (s2)), "SubProcess Status is Not Expected"); \
-    } while (false)
-#define WK_CHECK_STATE_3(s1, s2, s3)                                                                      \
-    do                                                                                                    \
-    {                                                                                                     \
-        WK_CHECK((state == (s1) || state == (s2) || state == (s3)), "SubProcess Status is Not Expected"); \
-    } while (false)
-#define WK_CHECK_STATE_WITH_ASSERT(s1)                                              \
-    do                                                                              \
-    {                                                                             \
-        WK_CHECK_WITH_EXIT((state == (s1)), "SubProcess Status is Not Expected"); \
-    } while (false)
-#define WK_CHECK_STATE_WITH_ASSERT_2(s1, s2)                                                         \
-    do                                                                                               \
-    {                                                                                              \
-        WK_CHECK_WITH_EXIT((state == (s1) || state == (s2)), "SubProcess Status is Not Expected"); \
-    } while (false)
-#define WK_CHECK_STATE_WITH_ASSERT_3(s1, s2, s3)                                                                      \
-    do                                                                                                                \
-    {                                                                                                               \
-        WK_CHECK_WITH_EXIT((state == (s1) || state == (s2) || state == (s3)), "SubProcess Status is Not Expected"); \
-    } while (false)
-
 namespace wukong::utils
 {
     typedef void (*ProcessExitCb)(int64_t exit_status, int term_signal);

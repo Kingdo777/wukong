@@ -5,7 +5,7 @@
 #include "LocalGatewayEndpoint.h"
 #include "LocalGateway.h"
 
-void LocalGatewayHandler::onRequest(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
+void LocalGatewayEndpointHandler::onRequest(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
 {
     // Very permissive CORS
     response.headers().add<Pistache::Http::Header::AccessControlAllowOrigin>(
@@ -32,39 +32,40 @@ void LocalGatewayHandler::onRequest(const Pistache::Http::Request& request, Pist
     }
 }
 
-void LocalGatewayHandler::onTimeout(const Pistache::Http::Request&, Pistache::Http::ResponseWriter response)
+void LocalGatewayEndpointHandler::onTimeout(const Pistache::Http::Request&, Pistache::Http::ResponseWriter response)
 {
+    SPDLOG_ERROR("Request onTimeout");
     response
         .send(Pistache::Http::Code::Request_Timeout, "Timeout")
         .then([=](ssize_t) {}, PrintException());
 }
 
-void LocalGatewayHandler::handleGetReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
+void LocalGatewayEndpointHandler::handleGetReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
 {
     const std::string& uri = request.resource();
     if (uri == "/ping")
     {
-        SPDLOG_DEBUG("LocalGatewayHandler received ping request");
+        SPDLOG_DEBUG("LocalGatewayEndpointHandler received ping request");
         response.send(Pistache::Http::Code::Ok, "PONG");
         return;
     }
-    SPDLOG_WARN(fmt::format("LocalGatewayHandler received Unsupported request ： {}", uri));
+    SPDLOG_WARN(fmt::format("LocalGatewayEndpointHandler received Unsupported request ： {}", uri));
     response.send(Pistache::Http::Code::Bad_Request, fmt::format("Unsupported request : {}", uri));
 }
 
-void LocalGatewayHandler::handlePostReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
+void LocalGatewayEndpointHandler::handlePostReq(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response)
 {
     const std::string& uri = request.resource();
     if (uri == "/ping")
     {
-        SPDLOG_DEBUG("LocalGatewayHandler received ping request");
+        SPDLOG_DEBUG("LocalGatewayEndpointHandler received ping request");
         response.send(Pistache::Http::Code::Ok, "PONG");
         return;
     }
 
     if (uri == "/init")
     {
-        SPDLOG_DEBUG("LocalGatewayHandler received /init request");
+        SPDLOG_DEBUG("LocalGatewayEndpointHandler received /init request");
 
         std::string username = request.cookies().get("username").value;
         std::string appname  = request.cookies().get("appname").value;
@@ -86,7 +87,7 @@ void LocalGatewayHandler::handlePostReq(const Pistache::Http::Request& request, 
             const auto& msg      = wukong::proto::jsonToMessage(request.body());
             const auto& username = msg.user();
             const auto& appname  = msg.application();
-            SPDLOG_DEBUG("LocalGatewayHandler received /function/call request , msg-id = {}", msg.id());
+            SPDLOG_DEBUG("LocalGatewayEndpointHandler received /function/call request , msg-id = {}", msg.id());
             if (!endpoint()->lg->checkUser(username) || !endpoint()->lg->checkApp(appname))
             {
                 response.send(Pistache::Http::Code::Internal_Server_Error, "username or appname isn't match Instance");
@@ -97,6 +98,6 @@ void LocalGatewayHandler::handlePostReq(const Pistache::Http::Request& request, 
         }
     }
 
-    SPDLOG_WARN(fmt::format("LocalGatewayHandler received Unsupported request ： {}", uri));
+    SPDLOG_WARN(fmt::format("LocalGatewayEndpointHandler received Unsupported request ： {}", uri));
     response.send(Pistache::Http::Code::Bad_Request, fmt::format("Unsupported request : {}", uri));
 }

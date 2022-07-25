@@ -7,19 +7,110 @@
 
 #include "macro.h"
 
-enum FunctionType {
-    Cpp,
-    Python
+enum FunctionInstanceType {
+    WorkerFunction,
+    StorageFunction,
+    InstanceTypeCount
 };
 
-typedef struct FunctionInfo
+enum FunctionType {
+    Cpp,
+    Python,
+    WebAssembly,
+    StorageFunc
+};
+
+typedef struct GreetingMsg
 {
-    magic_t magic_number;
-    FunctionType type;
-    char func_path[512];
-    size_t path_size;
-    int threads;
-} FunctionInfo;
+    GreetingMsg() = default;
+    explicit GreetingMsg(std::string& msg_)
+    {
+        strcpy(msg, msg_.c_str());
+    }
+
+    explicit GreetingMsg(const char* msg_)
+    {
+        strcpy(msg, msg_);
+    }
+
+    [[nodiscard]] bool equal(const char* want) const
+    {
+        return std::string(msg) == std::string(want);
+    }
+
+    [[nodiscard]] bool equal(const std::string& want) const
+    {
+        return std::string(msg) == want;
+    }
+    std::string to_string()
+    {
+        return std::string { msg };
+    }
+
+private:
+    char msg[32] {};
+} GreetingMsg;
+
+typedef struct FuncCreateMsg
+{
+    FuncCreateMsg() = default;
+    FuncCreateMsg(const std::string& funcname_,
+                  FunctionType type_,
+                  FunctionInstanceType instanceType_,
+                  int workers_ = 1,
+                  int threads_ = 1)
+        : type(type_)
+        , instanceType(instanceType_)
+        , workers(workers_)
+        , threads(threads_)
+    {
+        funcname_size = funcname_.size();
+        if (funcname_size >= WUKONG_FUNC_NAME_SIZE)
+        {
+            SPDLOG_ERROR("func path is too long (size is {}, which is bigger than WUKONG_FUNC_PATH_SIZE({}))", funcname_size, WUKONG_FUNC_NAME_SIZE - 1);
+            funcname_size = WUKONG_FUNC_NAME_SIZE - 1;
+        }
+        strncpy(funcname, funcname_.data(), funcname_size);
+    }
+    magic_t magic_number              = 0;
+    FunctionType type                 = FunctionType::Cpp;
+    FunctionInstanceType instanceType = FunctionInstanceType::WorkerFunction;
+    char funcname[WUKONG_FUNC_NAME_SIZE] {};
+    size_t funcname_size = 0;
+    int workers          = 1;
+    int threads          = 1;
+} FuncCreateMsg;
+
+typedef struct FuncCreateDoneMsg
+{
+    FuncCreateDoneMsg()  = default;
+    magic_t magic_number = 0;
+
+    char funcname[WUKONG_FUNC_NAME_SIZE] {};
+    size_t funcname_size = 0;
+
+    char PipeArray[4][WUKONG_NAMED_PIPE_SIZE] {};
+    size_t PipeSizeArray[4] {};
+
+    char funcInst_uuid[WUKONG_UUID_SIZE] {};
+    size_t uuidSize = 0;
+
+    FunctionInstanceType instType = InstanceTypeCount;
+
+} FuncCreateDoneMsg;
+
+/// #1_#2PipePath
+/// for sub-process, #1 is meaningful
+/// for parent-process, #2 is meaningful
+enum PipeIndex {
+    read_writePipePath,
+    write_readPipePath,
+    request_responsePipePath,
+    response_requestPipePath,
+    pipeCount
+};
+
+extern const char* PipeNameString[pipeCount];
 
 typedef struct FuncResult
 {
@@ -64,5 +155,7 @@ enum StorageFuncOpType {
     Unknown
 };
 extern const char* StorageFuncOpTypeName[Unknown];
+
+boost::filesystem::path getFunCodePath(const std::string& funcname, FunctionType type);
 
 #endif // WUKONG_STRUCT_H

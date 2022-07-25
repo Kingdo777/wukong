@@ -7,19 +7,19 @@
 
 #include <wukong.pb.h>
 #include <wukong/utils/json.h>
+#include <wukong/utils/struct.h>
 #include <wukong/utils/timing.h>
 #include <wukong/utils/uuid.h>
 
 namespace wukong::proto
 {
-    const std::array<std::string, 2> FunctionTypeName = {
-        "c/cpp",
-        "python"
-    };
-    const std::unordered_map<std::string, proto::Function_FunctionType> FunctionTypeNameMAP = {
-        { std::make_pair(FunctionTypeName[Function_FunctionType_C_CPP], Function_FunctionType_C_CPP) },
-        { std::make_pair(FunctionTypeName[Function_FunctionType_PYTHON], Function_FunctionType_PYTHON) }
-    };
+
+    std::string FunctionType2Name(proto::Function_FunctionType type);
+
+    proto::Function_FunctionType FunctionName2Type(const std::string& name);
+
+    ///_______________________ For FuncType __________________________
+    FunctionType toFunctionType(proto::Function_FunctionType type);
 
     /// _______________________ For Message __________________________
     std::string messageToJson(const wukong::proto::Message& msg);
@@ -78,4 +78,4 @@ namespace wukong::proto
     wukong::proto::ReplyStartupInstance jsonToReplyStartupInstance(const std::string& jsonIn);
 }
 
-#endif //WUKONG_PROTO_H
+#endif // WUKONG_PROTO_H

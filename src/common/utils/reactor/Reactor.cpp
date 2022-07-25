@@ -52,3 +52,7 @@ std::shared_ptr<Pistache::Aio::Handler> Reactor::pickHandler()
     auto index    = handlerIndex_.fetch_add(1) % handlers.size();
     return handlers[index];
 }
+
+std::vector<std::shared_ptr<Pistache::Aio::Handler>> Reactor::getHandlers(){
+    return reactor_->handlers(handlerKey_);
+}

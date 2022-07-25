@@ -6,7 +6,7 @@
 //
 int main()
 {
-    wukong::utils::initLog();
+    wukong::utils::initLog("test/cgroup/sub-process");
     SIGNAL_HANDLER()
     SPDLOG_INFO("SUB Process ， PID = {}", getpid());
     std::vector<std::thread> ts;

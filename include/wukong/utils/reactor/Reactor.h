@@ -5,7 +5,7 @@
 #ifndef WUKONG_REACTOR_H
 #define WUKONG_REACTOR_H
 
-#include "wukong/utils/macro.h"
+#include <wukong/utils/macro.h>
 #include <boost/filesystem.hpp>
 #include <pistache/async.h>
 #include <pistache/reactor.h>
@@ -28,6 +28,7 @@ protected:
     virtual void onReady(const Pistache::Polling::Event& event) = 0;
 
     std::shared_ptr<Pistache::Aio::Handler> pickHandler();
+    std::vector<std::shared_ptr<Pistache::Aio::Handler>> getHandlers();
 
     std::shared_ptr<Pistache::Aio::Handler> handler_ = nullptr;
 

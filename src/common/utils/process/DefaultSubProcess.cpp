@@ -212,7 +212,7 @@ namespace wukong::utils
             pipes[fd][1] = fcntl(use_fd, F_DUPFD, pipes_count);
             if (pipes[fd][1] == -1)
             {
-                write_2_fd(error_fd, errno);
+                WRITE_2_FD(error_fd, errno);
                 _exit(127);
             }
         }
@@ -236,7 +236,7 @@ namespace wukong::utils
 
                     if (use_fd < 0)
                     {
-                        write_2_fd(error_fd, errno);
+                        WRITE_2_FD(error_fd, errno);
                         _exit(127);
                     }
                 }
@@ -249,7 +249,7 @@ namespace wukong::utils
 
             if (fd == -1)
             {
-                write_2_fd(error_fd, errno);
+                WRITE_2_FD(error_fd, errno);
                 _exit(127);
             }
 
@@ -270,7 +270,7 @@ namespace wukong::utils
 
         if (!options.cwd.empty() && chdir(options.cwd.c_str()))
         {
-            write_2_fd(error_fd, errno);
+            WRITE_2_FD(error_fd, errno);
             SPDLOG_ERROR("change Work Dir failed");
             _exit(127);
         }
@@ -289,13 +289,13 @@ namespace wukong::utils
 
         if ((options.flags & SET_GID) && setgid(options.gid))
         {
-            write_2_fd(error_fd, errno);
+            WRITE_2_FD(error_fd, errno);
             _exit(127);
         }
 
         if ((options.flags & SET_UID) && setuid(options.uid))
         {
-            write_2_fd(error_fd, errno);
+            WRITE_2_FD(error_fd, errno);
             _exit(127);
         }
 
@@ -334,7 +334,7 @@ namespace wukong::utils
             if (SIG_ERR != signal(n, SIG_DFL))
                 continue;
 
-            write_2_fd(error_fd, errno);
+            WRITE_2_FD(error_fd, errno);
             _exit(127);
         }
 
@@ -344,7 +344,7 @@ namespace wukong::utils
 
         if (err != 0)
         {
-            write_2_fd(error_fd, err);
+            WRITE_2_FD(error_fd, err);
             _exit(127);
         }
 
@@ -356,7 +356,7 @@ namespace wukong::utils
         args.emplace_back(nullptr);
 
         execvp(options.file.c_str(), args.data());
-        write_2_fd(error_fd, errno);
+        WRITE_2_FD(error_fd, errno);
         _exit(127);
     }
 }

@@ -11,6 +11,10 @@
 
 #define STORAGE_FUNCTION_DEFAULT_SIZE (64 * 1024 * 1024) // 64MB
 
+#define NAMED_PIPE_PATH "/tmp/wukong/named-pipe"
+
+#define WUKONG_UUID_SIZE 512
+
 // We're always on x86_64
 #define WUKONG_CACHE_LINE_SIZE 64
 #define WUKONG_PAGE_SIZE 4096
@@ -28,6 +32,9 @@
 #ifndef WUKONG_MESSAGE_SIZE
 #define WUKONG_MESSAGE_SIZE 2048
 #endif
+
+#define WUKONG_FUNC_NAME_SIZE 256
+#define WUKONG_NAMED_PIPE_SIZE 1024
 
 #ifndef WUKONG_MEMORY_UNIT_SIZE
 #define WUKONG_MEMORY_UNIT_SIZE 64 // 64MB
@@ -146,4 +153,35 @@ typedef std::pair<bool, std::string> WK_FUNC_RETURN_TYPE;
     {                                                              \
         const auto& ret_var__ = (ret);                             \
         WK_CHECK_WITH_EXIT((ret_var__).first, (ret_var__).second); \
+    } while (false)
+
+#define WK_CHECK_STATE(s1)                                              \
+    do                                                                  \
+    {                                                                   \
+        WK_CHECK((state == (s1)), "SubProcess Status is Not Expected"); \
+    } while (false)
+#define WK_CHECK_STATE_2(s1, s2)                                                         \
+    do                                                                                   \
+    {                                                                                    \
+        WK_CHECK((state == (s1) || state == (s2)), "SubProcess Status is Not Expected"); \
+    } while (false)
+#define WK_CHECK_STATE_3(s1, s2, s3)                                                                      \
+    do                                                                                                    \
+    {                                                                                                     \
+        WK_CHECK((state == (s1) || state == (s2) || state == (s3)), "SubProcess Status is Not Expected"); \
+    } while (false)
+#define WK_CHECK_STATE_WITH_ASSERT(s1)                                              \
+    do                                                                              \
+    {                                                                             \
+        WK_CHECK_WITH_EXIT((state == (s1)), "SubProcess Status is Not Expected"); \
+    } while (false)
+#define WK_CHECK_STATE_WITH_ASSERT_2(s1, s2)                                                         \
+    do                                                                                               \
+    {                                                                                              \
+        WK_CHECK_WITH_EXIT((state == (s1) || state == (s2)), "SubProcess Status is Not Expected"); \
+    } while (false)
+#define WK_CHECK_STATE_WITH_ASSERT_3(s1, s2, s3)                                                                      \
+    do                                                                                                                \
+    {                                                                                                               \
+        WK_CHECK_WITH_EXIT((state == (s1) || state == (s2) || state == (s3)), "SubProcess Status is Not Expected"); \
     } while (false)

@@ -7,7 +7,7 @@ from wk.utils.env import WUKONG_BUILD_DIR, WUKONG_PYTHON_CODE_DIR
 
 
 @task
-def register(context, file="", username='kingdo', appname='test', funcname='hello', func_type='c/cpp',
+def register(context, file="", username='kingdo', appname='test', funcname='hello', func_type='C/Cpp',
              concurrency=1,
              memory=1024,
              cpu=1000):
@@ -19,7 +19,7 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
         conf = json.loads(open(file, "r").read())
         username, appname, funcname, concurrency, memory, cpu, func_type = \
             conf['user'], conf['test'], conf['hello'], conf['concurrency'], conf['memory'], conf['cpu'], conf['type']
-    if func_type == 'c/cpp':
+    if func_type == 'C/Cpp':
         function_path = join(WUKONG_BUILD_DIR, "lib", "libfunc_{}.so".format(funcname))
     else:
         function_path = join(WUKONG_PYTHON_CODE_DIR, "{}.py".format(funcname))
@@ -44,8 +44,8 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
     elif cpu < 100 or cpu > 4000:
         print("cpu < 100 or cpu > 4000")
         return
-    elif func_type != 'c/cpp' and func_type != 'python':
-        print("type must is c/cpp or python")
+    elif func_type != 'C/Cpp' and func_type != 'Python' and func_type != 'WebAssembly':
+        print("type must is: C/Cpp, Python, or WebAssembly")
         return
     else:
         url = "http://{}:{}/function/register".format(host, port)

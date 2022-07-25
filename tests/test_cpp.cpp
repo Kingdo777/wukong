@@ -2,18 +2,45 @@
 // Created by kingdo on 2022/3/16.
 //
 
+#include <boost/filesystem.hpp>
 #include <list>
 #include <wukong/utils/macro.h>
-#include <boost/filesystem.hpp>
 
 using namespace std;
 
-int main()
+boost::filesystem::path getFunCodePath(const std::string& funcname, bool is_python)
+{
+    if (is_python)
+        return boost::filesystem::path("/tmp/wukong/func-code/python").append(funcname + ".py");
+    return boost::filesystem::path("/tmp/wukong/func-code/cpp").append(funcname).append("lib.so");
+}
+
+std::string getFuncnameFromCodePath(const boost::filesystem::path& path)
 {
 
-    boost::filesystem::path p("/home/kingdo/CLionProjects/wukong/src/instance/function/worker-function/CMakeLists.txt");
-    SPDLOG_INFO(p.parent_path().string());
-    SPDLOG_INFO(p.filename().string());
+    if (path.parent_path().filename() == "python")
+    {
+        auto filename     = path.filename().string();
+        size_t suffix_len = std::string { ".py" }.size();
+        return filename.substr(0, filename.size() - suffix_len);
+    }
+    else
+    {
+        return path.parent_path().filename().string();
+    }
+}
+
+int main()
+{
+    SPDLOG_INFO(getFuncnameFromCodePath(getFunCodePath("cpp", false)));
+    SPDLOG_INFO(getFuncnameFromCodePath(getFunCodePath("python", true)));
+
+    SPDLOG_INFO(getFuncnameFromCodePath(getFunCodePath("cppfhwuifhiwh", false)));
+    SPDLOG_INFO(getFuncnameFromCodePath(getFunCodePath("pythonwifhiowehfioweh", true)));
+
+    //    boost::filesystem::path p("/home/kingdo/CLionProjects/wukong/src/instance/function/worker-function/CMakeLists.txt");
+    //    SPDLOG_INFO(p.parent_path().string());
+    //    SPDLOG_INFO(p.filename().string());
 
     //    char s_[] = "123456";
     //    string s { s_, size(s_) };

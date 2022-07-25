@@ -24,7 +24,7 @@ void link_()
 
 int main()
 {
-    wukong::utils::initLog("test-python");
+    wukong::utils::initLog("test/python");
     boost::filesystem::path workingDir("/home/kingdo/CLionProjects/wukong/tests/python/py-source");
     std::string pythonModuleName = "find_lib.py";
 

@@ -245,7 +245,7 @@ private:
             msg.set_application("test");
             const std::string& func = request.resource();
             if (func == "/")
-                msg.set_function("py_hello");
+                msg.set_function("py_noop");
             else
                 msg.set_function(func.substr(1));
             msg.set_type(wukong::proto::Message_MessageType_FUNCTION);
@@ -309,7 +309,7 @@ int main()
     }
     if (fork() == 0)
     {
-        wukong::utils::initLog("global-lw");
+        wukong::utils::initLog("test/global-lw","");
         SPDLOG_INFO("-------------------global config---------------------");
         wukong::utils::Config::print();
         SIGNAL_HANDLER()
@@ -395,14 +395,17 @@ int main()
         endpoint.stop();
         wukong::utils::Timing::printTimerTotals();
     }
-    wukong::utils::initLog("local-gw");
+    wukong::utils::initLog("test/local-gw", "");
     SPDLOG_INFO("-------------------local config---------------------");
     wukong::utils::Config::print();
     SIGNAL_HANDLER()
     ::dup2(fds[0][1], 3);
     ::dup2(fds[1][1], 4);
     LocalGateway lg;
-    lg.start();
+    auto opts = LocalGateway::Options::options();
+    lg.init(opts);
+    lg.set_handler(std::make_shared<LocalGatewayHandler>(&lg));
+    lg.run();
     SIGNAL_WAIT()
     lg.shutdown();
     wukong::utils::Timing::printTimerTotals();

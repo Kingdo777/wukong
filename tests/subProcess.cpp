@@ -7,7 +7,7 @@
 
 int main()
 {
-    wukong::utils::initLog();
+    wukong::utils::initLog("test/subProcess");
     wukong::utils::SubProcess::Options options("pwd");
     options.Workdir("/home/kingdo");
     wukong::utils::DefaultSubProcess process(options);

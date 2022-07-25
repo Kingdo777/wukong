@@ -33,7 +33,7 @@ ProcessInstanceProxy::doStart(const std::string& username, const std::string& ap
         int fd = process.read_fd();
         /// TODO 这里需要将fd转化为阻塞的
         wukong::utils::nonblock_ioctl(fd, 0);
-        wukong::utils::read_from_fd(fd, &instancePort);
+        READ_FROM_FD(fd, &instancePort);
         if (instancePort <= 0)
         {
             msg = fmt::format("can't get Instance Port");

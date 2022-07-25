@@ -5,13 +5,14 @@
 #ifndef WUKONG_WORKERFUNCAGENT_H
 #define WUKONG_WORKERFUNCAGENT_H
 
+#include <Python.h>
 #include <boost/filesystem.hpp>
 #include <faas/cpp/function-interface.h>
 #include <faas/python/function-interface.h>
 #include <pistache/async.h>
 #include <pistache/http.h>
 #include <pistache/reactor.h>
-#include <Python.h>
+#include <queue>
 #include <utility>
 #include <wukong/proto/proto.h>
 #include <wukong/utils/config.h>
@@ -74,13 +75,28 @@ public:
 
         Options& threads(int val);
 
+        Options& workers(int val);
+
+        Options& fds(int read_fd_, int write_fd_, int request_fd_, int response_fd_);
+
+        Options& funcPath(const boost::filesystem::path& path);
+
+        Options& funcType(FunctionType type_);
+
     private:
         int threads_;
+        int workers_;
+
         int read_fd;
-        uint64_t max_read_buffer_size;
         int write_fd;
         int request_fd;
         int response_fd;
+
+        uint64_t max_read_buffer_size;
+
+        boost::filesystem::path func_path;
+
+        FunctionType func_type;
     };
 
     WorkerFuncAgent();
@@ -141,18 +157,19 @@ private:
     void handlerIncoming();
 
     int read_fd;
-    uint64_t max_read_buffer_size;
     int write_fd;
-    Pistache::PollableQueue<wukong::proto::Message> writeQueue;
-    Pistache::PollableQueue<internalRequestEntry> internalRequestQueue;
+    int request_fd;
+    int response_fd;
+    uint64_t max_read_buffer_size;
+
+    std::queue<std::shared_ptr<wukong::proto::Message>> toWriteResult;
+    std::queue<std::shared_ptr<internalRequestEntry>> toCallInternalRequest;
+
+    FunctionType type;
+    boost::filesystem::path func_path;
 
     /// 不用上锁，因为是单线程
     std::unordered_map<uint64_t, Pistache::Async::Deferred<std::string>> internalRequestDeferredMap;
-
-    int request_fd;
-    int response_fd;
-
-    FunctionType type;
 
     bool loaded = false;
 

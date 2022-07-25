@@ -12,6 +12,8 @@ namespace wukong::utils
 {
 
     const std::string Config::logLevel                        = getEnvVar("LOG_LEVEL", "trace");
+    const std::string Config::enableLogFile                   = getEnvVar("ENABLE_LOG_FILE", "on");
+    const std::string Config::logFileBaseDir                  = getEnvVar("LOG_FILE_BASE_DIR", "/tmp/wukong/var/logs/");
     const int Config::endpointPort                            = getIntEnvVar("ENDPOINT_PORT", DEFAULT_ENDPOINT_PORT);
     const int Config::endpointNumThreads                      = getIntEnvVar("ENDPOINT_NUM_THREADS", hardware_concurrency());
     const uint64_t Config::headerTimeout                      = getIntEnvVar("HEADER_TIMEOUT", DEFAULT_HEADER_TIMEOUT);
@@ -42,6 +44,8 @@ namespace wukong::utils
     {
         SPDLOG_INFO("--- Log ---");
         SPDLOG_INFO("logLevel                       {}", logLevel);
+        SPDLOG_INFO("enableLogFile                  {}", enableLogFile);
+        SPDLOG_INFO("logFileBaseDir                 {}", logFileBaseDir);
 
         SPDLOG_INFO("--- Endpoint ---");
         SPDLOG_INFO("endpointPort                   {}", endpointPort);

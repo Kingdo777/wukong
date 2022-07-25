@@ -15,6 +15,7 @@
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE // 显示全部信息
 #endif
 /// 对于SPDLOG_ACTIVE_LEVEL的配置需要在spdlog头文件之前, 这样才能覆盖其配置
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
 #define CHECK_MIN_LEVEL(level)                                              \
@@ -25,7 +26,7 @@
 
 namespace wukong::utils
 {
-    void initLog(std::string exec_name = "");
+    void initLog(std::string exec_name = "", const std::string& log_type = "default");
 
     void printAllENV();
 }

@@ -11,16 +11,14 @@
 #include <wukong/utils/dl.h>
 #include <wukong/utils/redis.h>
 
-#include "LocalGatewayClientServer.h"
-
 class LocalGatewayEndpoint;
 
 class LocalGateway;
 
-class LocalGatewayHandler : public Pistache::Http::Handler
+class LocalGatewayEndpointHandler : public Pistache::Http::Handler
 {
 public:
-    HTTP_PROTOTYPE(LocalGatewayHandler)
+    HTTP_PROTOTYPE(LocalGatewayEndpointHandler)
 
     void onRequest(const Pistache::Http::Request& request, Pistache::Http::ResponseWriter response) override;
 
@@ -50,8 +48,8 @@ class LocalGatewayEndpoint : public wukong::endpoint::Endpoint
 
 public:
     explicit LocalGatewayEndpoint(LocalGateway* lg_,
-                                  const std::string& name                             = "local-gateway-endpoint",
-                                  const std::shared_ptr<LocalGatewayHandler>& handler = std::make_shared<LocalGatewayHandler>())
+                                  const std::string& name                                     = "local-gateway-endpoint",
+                                  const std::shared_ptr<LocalGatewayEndpointHandler>& handler = std::make_shared<LocalGatewayEndpointHandler>())
         : Endpoint(name, handler)
         , lg(lg_)
     {
@@ -61,4 +59,4 @@ public:
     LocalGateway* lg;
 };
 
-#endif //WUKONG_LOCAL_GATEWAY_ENDPOINT_H
+#endif // WUKONG_LOCAL_GATEWAY_ENDPOINT_H

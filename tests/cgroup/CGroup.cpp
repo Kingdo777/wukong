@@ -6,7 +6,7 @@
 #include <wukong/utils/timing.h>
 int main()
 {
-    wukong::utils::initLog();
+    wukong::utils::initLog("test/cgroup/CGroup");
     SIGNAL_HANDLER()
 
     SPDLOG_DEBUG("Main Process {}", getpid());

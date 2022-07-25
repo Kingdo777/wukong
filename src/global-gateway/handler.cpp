@@ -175,9 +175,8 @@ void GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request& request,
             function.set_concurrency(strtol(cookies.get("concurrency").value.c_str(), nullptr, 10));
             function.set_memory(strtol(cookies.get("memory").value.c_str(), nullptr, 10));
             function.set_cpu(strtol(cookies.get("cpu").value.c_str(), nullptr, 10));
-            auto type = cookies.get("type").value;
-            std::transform(type.begin(), type.end(), type.begin(), ::tolower);
-            function.set_type(wukong::proto::FunctionTypeNameMAP.at(type));
+            auto type = wukong::proto::FunctionName2Type(cookies.get("type").value);
+            function.set_type(type);
             endpoint()->lb->handleFuncRegister(function, request.body(), std::move(response));
             return;
         }

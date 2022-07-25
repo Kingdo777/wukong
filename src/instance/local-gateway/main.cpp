@@ -16,7 +16,10 @@ int main()
     wukong::utils::Config::print();
     SIGNAL_HANDLER()
     LocalGateway lg;
-    lg.start();
+    auto opts = LocalGateway::Options::options();
+    lg.init(opts);
+    lg.set_handler(std::make_shared<LocalGatewayHandler>(&lg));
+    lg.run();
     SIGNAL_WAIT()
     lg.shutdown();
     wukong::utils::Timing::printTimerTotals();

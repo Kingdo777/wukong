@@ -6,6 +6,7 @@
 #define WUKONG_CLIENT_SERVER_H
 
 #include <pistache/client.h>
+#include <wukong/utils/macro.h>
 
 namespace wukong::client
 {
@@ -50,9 +51,9 @@ namespace wukong::client
     public:
         ClientServer() = default;
 
-        void start(const Options& options);
+        virtual void start(const Options& options);
 
-        void stop()
+        virtual void stop()
         {
             if (status != Shutdown)
                 Pistache::Http::Client::shutdown();

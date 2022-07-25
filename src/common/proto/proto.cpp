@@ -7,6 +7,61 @@
 namespace wukong::proto
 {
 
+    std::string FunctionType2Name(proto::Function_FunctionType type)
+    {
+        switch (type)
+        {
+        case Function_FunctionType_C_CPP:
+            return "C/Cpp";
+        case Function_FunctionType_PYTHON:
+            return "Python";
+        case Function_FunctionType_WebAssembly:
+            return "WebAssembly";
+        default:
+            WK_CHECK_WITH_EXIT(false, fmt::format("illegal type"));
+            return ""; /// Unreachable, for compile with no warning;
+        }
+    }
+
+    proto::Function_FunctionType FunctionName2Type(const std::string& name)
+    {
+        std::string name_tmp = name;
+        std::transform(name_tmp.begin(), name_tmp.end(), name_tmp.begin(), ::toupper);
+        if (name_tmp == "C/CPP")
+            return Function_FunctionType_C_CPP;
+        else if (name_tmp == "PYTHON")
+            return Function_FunctionType_PYTHON;
+        else if (name_tmp == "WEBASSEMBLY")
+            return Function_FunctionType_WebAssembly;
+        WK_CHECK_WITH_EXIT(false, fmt::format("illegal type-name `{}`->`{}`", name, name_tmp));
+        return Function_FunctionType_C_CPP; /// Unreachable, for compile with no warning;
+    }
+
+    ///_______________________ For FuncType __________________________
+    FunctionType toFunctionType(proto::Function_FunctionType type)
+    {
+        FunctionType func_type = Cpp;
+        switch (type)
+        {
+        case wukong::proto::Function_FunctionType_PYTHON: {
+            func_type = FunctionType::Python;
+            break;
+        }
+        case wukong::proto::Function_FunctionType_C_CPP: {
+            func_type = FunctionType::Cpp;
+            break;
+        }
+        case wukong::proto::Function_FunctionType_WebAssembly: {
+            func_type = FunctionType::WebAssembly;
+            break;
+        }
+        default: {
+            WK_CHECK_WITH_EXIT(false, "Unreachable");
+        }
+        }
+        return func_type;
+    }
+
     /// _______________________ For Message __________________________
 
     std::string messageToJson(const Message& msg)
@@ -335,7 +390,7 @@ namespace wukong::proto
         hash.insert(std::make_pair("cpu", std::to_string(function.cpu())));
         hash.insert(std::make_pair("storageKey", function.storagekey()));
         hash.insert(std::make_pair("storageKey", function.storagekey()));
-        hash.insert(std::make_pair("type", FunctionTypeName[function.type()]));
+        hash.insert(std::make_pair("type", wukong::proto::FunctionType2Name(function.type())));
         return hash;
     }
 
@@ -354,7 +409,7 @@ namespace wukong::proto
         msg.set_memory(utils::getIntFromJson(d, "memory", 1024));
         msg.set_cpu(utils::getIntFromJson(d, "cpu", 1000));
         msg.set_storagekey(utils::getStringFromJson(d, "storageKey", ""));
-        msg.set_type(FunctionTypeNameMAP.at(utils::getStringFromJson(d, "type", "c_cpp")));
+        msg.set_type(FunctionName2Type(utils::getStringFromJson(d, "type", "c_cpp")));
 
         return msg;
     }
@@ -369,7 +424,7 @@ namespace wukong::proto
         msg.set_memory(strtol(hash.at("memory").c_str(), nullptr, 10));
         msg.set_cpu(strtol(hash.at("cpu").c_str(), nullptr, 10));
         msg.set_storagekey(hash.at("storageKey"));
-        msg.set_type(FunctionTypeNameMAP.at(hash.at("type")));
+        msg.set_type(FunctionName2Type(hash.at("type")));
         return msg;
     }
 
@@ -389,9 +444,10 @@ namespace wukong::proto
         d.AddMember("cpu", function.cpu(), a);
         d.AddMember("storageKey",
                     rapidjson::Value(function.storagekey().c_str(), function.storagekey().size(), a).Move(), a);
+        auto type = FunctionType2Name(function.type());
         d.AddMember("type",
-                    rapidjson::Value(FunctionTypeName[function.type()].c_str(),
-                                     FunctionTypeName[function.type()].size(), a)
+                    rapidjson::Value(type.c_str(),
+                                     type.size(), a)
                         .Move(),
                     a);
         rapidjson::StringBuffer sb;

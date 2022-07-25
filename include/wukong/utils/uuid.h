@@ -14,6 +14,8 @@
 namespace wukong::utils
 {
     uint32_t uuid();
+    //    uint32_t uuid();
+    //    void uuid_reset();
 }
 
-#endif //WUKONG_UUID_H
+#endif // WUKONG_UUID_H

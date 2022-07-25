@@ -42,11 +42,13 @@ void AgentHandler::registerPoller(Pistache::Polling::Epoll& poller)
 
 WorkerFuncAgent::Options::Options()
     : threads_(1)
+    , workers_(1)
     , read_fd(wukong::utils::Config::InstanceFunctionDefaultReadFD())
-    , max_read_buffer_size(wukong::utils::Config::InstanceFunctionReadBufferSize())
     , write_fd(wukong::utils::Config::InstanceFunctionDefaultWriteFD())
     , request_fd(wukong::utils::Config::InstanceFunctionDefaultInternalRequestFD())
     , response_fd(wukong::utils::Config::InstanceFunctionDefaultInternalResponseFD())
+    , max_read_buffer_size(wukong::utils::Config::InstanceFunctionReadBufferSize())
+
 { }
 
 WorkerFuncAgent::Options WorkerFuncAgent::Options::options()
@@ -60,13 +62,39 @@ WorkerFuncAgent::Options& WorkerFuncAgent::Options::threads(int val)
     return *this;
 }
 
+WorkerFuncAgent::Options& WorkerFuncAgent::Options::workers(int val)
+{
+    threads_ = val;
+    return *this;
+}
+
+WorkerFuncAgent::Options& WorkerFuncAgent::Options::fds(int read_fd_, int write_fd_, int request_fd_, int response_fd_)
+{
+
+    read_fd     = read_fd_;
+    write_fd    = write_fd_;
+    request_fd  = request_fd_;
+    response_fd = response_fd_;
+    return *this;
+}
+WorkerFuncAgent::Options& WorkerFuncAgent::Options::funcPath(const boost::filesystem::path& path)
+{
+    func_path = path;
+    return *this;
+}
+WorkerFuncAgent::Options& WorkerFuncAgent::Options::funcType(FunctionType type_)
+{
+    func_type = type_;
+    return *this;
+}
+
 WorkerFuncAgent::WorkerFuncAgent()
     : Reactor()
     , read_fd(-1)
-    , max_read_buffer_size(0)
     , write_fd(-1)
     , request_fd(-1)
     , response_fd(-1)
+    , max_read_buffer_size(0)
     , type(FunctionType::Cpp)
     , lib()
 { }
@@ -78,14 +106,18 @@ void WorkerFuncAgent::init(WorkerFuncAgent::Options& options)
                  Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Read),
                  Pistache::Polling::Tag(read_fd),
                  Pistache::Polling::Mode::Edge);
+    poller.addFdOneShot(write_fd,
+                        Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                        Pistache::Polling::Tag(write_fd),
+                        Pistache::Polling::Mode::Edge);
     poller.addFd(response_fd,
                  Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Read),
                  Pistache::Polling::Tag(response_fd),
                  Pistache::Polling::Mode::Edge);
-    if (!writeQueue.isBound())
-        writeQueue.bind(poller);
-    if (!internalRequestQueue.isBound())
-        internalRequestQueue.bind(poller);
+    poller.addFdOneShot(request_fd,
+                        Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                        Pistache::Polling::Tag(request_fd),
+                        Pistache::Polling::Mode::Edge);
     Reactor::init(options.threads_, "Work Function Agent");
 }
 
@@ -114,6 +146,10 @@ void WorkerFuncAgent::shutdown()
             Py_XDECREF(py_func_entry);
             Py_DECREF(py_func_module);
             Py_FinalizeEx();
+            break;
+        }
+        case WebAssembly:
+        case StorageFunc: {
             break;
         }
         }
@@ -145,6 +181,12 @@ void WorkerFuncAgent::doExec(FaasHandle* h)
         Py_DECREF(returnValue);
         break;
     }
+    case WebAssembly: {
+        break;
+    }
+    case StorageFunc: {
+        WK_CHECK_WITH_EXIT(false, "Unreachable");
+    }
     }
 }
 
@@ -155,26 +197,34 @@ void WorkerFuncAgent::finishExec(wukong::proto::Message msg)
     std::string storageKey = msg.resultkey();
     auto& redis            = wukong::utils::Redis::getRedis();
     redis.set(storageKey, msg_json);
-    writeQueue.push(std::move(msg));
+    toWriteResult.push(std::make_shared<wukong::proto::Message>(std::move(msg)));
+    poller.rearmFd(write_fd,
+                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                   Pistache::Polling::Tag(write_fd),
+                   Pistache::Polling::Mode::Edge);
 }
 
 void WorkerFuncAgent::internalCall(const std::string& func, const std::string& args, uint64_t request_id, Pistache::Async::Deferred<std::string> deferred)
 {
-    internalRequestEntry entry(func, args, request_id, std::move(deferred));
-    internalRequestQueue.push(std::move(entry));
+    toCallInternalRequest.emplace(std::make_shared<internalRequestEntry>(func, args, request_id, std::move(deferred)));
+    poller.rearmFd(request_fd,
+                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                   Pistache::Polling::Tag(request_fd),
+                   Pistache::Polling::Mode::Edge);
 }
 
 void WorkerFuncAgent::onRunning() const
 {
     bool running = true;
-    ::write(write_fd, &running, sizeof(running));
+    SPDLOG_DEBUG("onRunning");
+    WRITE_2_FD_original(write_fd, &running, sizeof(running));
 }
 
 void WorkerFuncAgent::onReady(const Pistache::Polling::Event& event)
 {
+    int fd = (int)event.tag.value();
     if (event.flags.hasFlag(Pistache::Polling::NotifyOn::Read))
     {
-        auto fd = event.tag.value();
         if (static_cast<ssize_t>(fd) == read_fd)
         {
             try
@@ -197,7 +247,10 @@ void WorkerFuncAgent::onReady(const Pistache::Polling::Event& event)
                 SPDLOG_ERROR("handlerIncoming error: {}", ex.what());
             }
         }
-        else if (event.tag == writeQueue.tag())
+    }
+    if (event.flags.hasFlag(Pistache::Polling::NotifyOn::Write))
+    {
+        if (fd == write_fd)
         {
             try
             {
@@ -205,11 +258,11 @@ void WorkerFuncAgent::onReady(const Pistache::Polling::Event& event)
             }
             catch (std::exception& ex)
             {
-                SPDLOG_ERROR("handlerWriteQueue error: {}", ex.what());
+                SPDLOG_ERROR("handlerFuncCreateDoneQueue error: {}", ex.what());
             }
         }
 
-        else if (event.tag == internalRequestQueue.tag())
+        else if (fd == request_fd)
         {
             try
             {
@@ -217,7 +270,7 @@ void WorkerFuncAgent::onReady(const Pistache::Polling::Event& event)
             }
             catch (std::exception& ex)
             {
-                SPDLOG_ERROR("handlerWriteQueue error: {}", ex.what());
+                SPDLOG_ERROR("handlerFuncCreateDoneQueue error: {}", ex.what());
             }
         }
     }
@@ -226,31 +279,24 @@ void WorkerFuncAgent::onReady(const Pistache::Polling::Event& event)
 void WorkerFuncAgent::onFailed() const
 {
     bool running = false;
-    ::write(write_fd, &running, sizeof(running));
+    WRITE_2_FD_original(write_fd, &running, sizeof(running));
 }
 
 void WorkerFuncAgent::loadFunc(WorkerFuncAgent::Options& options)
 {
     read_fd              = options.read_fd;
-    max_read_buffer_size = options.max_read_buffer_size;
     write_fd             = options.write_fd;
     request_fd           = options.request_fd;
     response_fd          = options.response_fd;
-    FunctionInfo func_info;
-    wukong::utils::nonblock_ioctl(read_fd, 0);
-    wukong::utils::read_from_fd(read_fd, &func_info);
-    type = func_info.type;
-    WK_CHECK_WITH_EXIT(MAGIC_NUMBER_CHECK(func_info.magic_number), "Data Wrong, Magic Check Failed!");
+    max_read_buffer_size = options.max_read_buffer_size;
 
-    wukong::utils::nonblock_ioctl(write_fd, 0);
+    type      = options.func_type;
+    func_path = options.func_path;
+
+    wukong::utils::nonblock_ioctl(write_fd, 1);
     wukong::utils::nonblock_ioctl(read_fd, 1);
-    wukong::utils::nonblock_ioctl(request_fd, 0);
+    wukong::utils::nonblock_ioctl(request_fd, 1);
     wukong::utils::nonblock_ioctl(response_fd, 1);
-
-    auto func_path = boost::filesystem::path(std::string { func_info.func_path, func_info.path_size });
-    WK_CHECK_WITH_EXIT(exists(func_path), fmt::format("{} is not exists", func_path.string()));
-    WK_CHECK_WITH_EXIT(func_info.threads >= 1, "func Concurrency < 1 ?");
-    options.threads(func_info.threads);
 
     switch (type)
     {
@@ -285,6 +331,10 @@ void WorkerFuncAgent::loadFunc(WorkerFuncAgent::Options& options)
         WK_CHECK_WITH_EXIT(py_func_module, fmt::format("Failed to load Function `faas_main` from module `{}`", module_name));
         break;
     }
+    case WebAssembly:
+    case StorageFunc: {
+        break;
+    }
     }
 
     loaded = true;
@@ -299,17 +349,23 @@ void WorkerFuncAgent::handlerWriteQueue()
 {
     for (;;)
     {
-        auto item = writeQueue.popSafe();
-        if (!item)
+        if (toWriteResult.empty())
             break;
+        auto msg = toWriteResult.front();
         FuncResult result;
         result.magic_number = MAGIC_NUMBER_WUKONG;
         result.success      = true;
-        result.request_id   = item->id();
-        memcpy(result.data, item->outputdata().data(), item->outputdata().size());
-        result.data_size = item->outputdata().size();
-        wukong::utils::write_2_fd(write_fd, result);
+        result.request_id   = msg->id();
+        memcpy(result.data, msg->outputdata().data(), msg->outputdata().size());
+        result.data_size = msg->outputdata().size();
+        WRITE_2_FD_goto(write_fd, result);
+        toWriteResult.pop();
     }
+write_fd_EAGAIN:
+    poller.rearmFd(write_fd,
+                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                   Pistache::Polling::Tag(write_fd),
+                   Pistache::Polling::Mode::Edge);
 }
 
 void WorkerFuncAgent::handlerIncoming()
@@ -319,37 +375,19 @@ void WorkerFuncAgent::handlerIncoming()
         std::string msg_json;
         msg_json.resize(max_read_buffer_size, 0);
         // TODO 缺少封装
-        auto size = ::read(read_fd, msg_json.data(), max_read_buffer_size);
-        if (size == -1)
-        {
-            if (errno != EAGAIN && errno != EWOULDBLOCK)
-            {
-                SPDLOG_ERROR("read fd is wrong : {}", wukong::utils::errors());
-                // TODO handler error;
-            }
-            return;
-        }
+        READ_FROM_FD_original_goto(read_fd, msg_json.data(), max_read_buffer_size);
         const auto& msg = wukong::proto::jsonToMessage(msg_json);
         auto handler    = pickOneHandler();
         handler->putMessage(msg);
     }
+read_fd_EAGAIN:;
 }
 void WorkerFuncAgent::handlerInternalResponse()
 {
     for (;;)
     {
         FuncResult result;
-        auto ret = wukong::utils::read_from_fd(response_fd, &result);
-        if (ret == -1)
-        {
-            if (errno != EAGAIN && errno != EWOULDBLOCK)
-            {
-                SPDLOG_ERROR("read fd is wrong : {}", wukong::utils::errors());
-                // TODO handler error;
-            }
-            return;
-        }
-        WK_CHECK(ret == sizeof(result), "read_from_fd failed");
+        READ_FROM_FD_goto(response_fd, &result);
         uint64_t request_id = result.request_id;
         if (!internalRequestDeferredMap.contains(request_id))
         {
@@ -366,22 +404,29 @@ void WorkerFuncAgent::handlerInternalResponse()
         }
         internalRequestDeferredMap.erase(request_id);
     }
+read_fd_EAGAIN:;
 }
 void WorkerFuncAgent::handlerInternalRequest()
 {
     for (;;)
     {
-        auto item = internalRequestQueue.popSafe();
-        if (!item)
+        if (toCallInternalRequest.empty())
             break;
+        auto item = toCallInternalRequest.front();
         InternalRequest request;
         request.magic_number = MAGIC_NUMBER_WUKONG;
         memcpy(request.funcname, item->funcname.data(), item->funcname.size());
         memcpy(request.args, item->args.data(), item->args.size());
         request.request_id = item->request_id;
-        wukong::utils::write_2_fd(request_fd, request);
+        WRITE_2_FD_goto(request_fd, request);
+        toCallInternalRequest.pop();
         internalRequestDeferredMap.emplace(item->request_id, std::move(item->deferred));
     }
+write_fd_EAGAIN:
+    poller.rearmFd(request_fd,
+                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                   Pistache::Polling::Tag(request_fd),
+                   Pistache::Polling::Mode::Edge);
 }
 
 void link()

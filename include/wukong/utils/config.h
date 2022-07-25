@@ -25,6 +25,8 @@ namespace wukong::utils
     {
     public:
         static std::string LogLevel() { return logLevel; };
+        static std::string EnableLogFile() { return enableLogFile; };
+        static std::string LogFileBaseDir() { return logFileBaseDir; };
 
         static int EndpointPort() { return endpointPort; };
 
@@ -75,6 +77,8 @@ namespace wukong::utils
     private:
         /// Log
         const static std::string logLevel;
+        const static std::string enableLogFile;
+        const static std::string logFileBaseDir;
 
         /// Endpoint
         // gateway的默认端口，默认为8080

@@ -3,12 +3,12 @@
 //
 
 #include "StorageFuncAgent.h"
-StorageFuncAgent::StorageFuncAgent()
+StorageFuncAgent::StorageFuncAgent(int read_fd, int write_fd)
     : status(Created)
-    , read_fd(wukong::utils::Config::InstanceFunctionDefaultReadFD())
-    , write_fd(wukong::utils::Config::InstanceFunctionDefaultWriteFD())
+    , read_fd(read_fd)
+    , write_fd(write_fd)
 {
-    wukong::utils::nonblock_ioctl(write_fd, 0);
+    wukong::utils::nonblock_ioctl(write_fd, 1);
     wukong::utils::nonblock_ioctl(read_fd, 1);
 }
 void StorageFuncAgent::run()
@@ -25,6 +25,11 @@ void StorageFuncAgent::run()
                  Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Read),
                  Pistache::Polling::Tag(read_fd),
                  Pistache::Polling::Mode::Edge);
+
+    poller.addFdOneShot(write_fd,
+                        Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                        Pistache::Polling::Tag(write_fd),
+                        Pistache::Polling::Mode::Edge);
 
     task = std::thread([=, this] {
         for (;;)
@@ -53,7 +58,7 @@ void StorageFuncAgent::shutdown()
     task.join();
     status = Shutdown;
 }
-void StorageFuncAgent::backResponse(bool success, const std::string& msg, uint64_t request_id) const
+void StorageFuncAgent::backResponse(bool success, const std::string& msg, uint64_t request_id)
 {
     FuncResult result;
     result.magic_number = MAGIC_NUMBER_WUKONG;
@@ -61,7 +66,11 @@ void StorageFuncAgent::backResponse(bool success, const std::string& msg, uint64
     result.data_size  = msg.size();
     result.request_id = request_id;
     result.success    = success;
-    wukong::utils::write_2_fd(write_fd, result);
+    toWrite.emplace(result);
+    poller.rearmFd(write_fd,
+                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                   Pistache::Polling::Tag(write_fd),
+                   Pistache::Polling::Mode::Edge);
 }
 void StorageFuncAgent::handleCreate(size_t length, uint64_t request_id)
 {
@@ -94,22 +103,31 @@ void StorageFuncAgent::handleDelete(const std::string& uuid, uint64_t request_id
 }
 void StorageFuncAgent::onReady(const Pistache::Polling::Event& event)
 {
+    int fd = (int)event.tag.value();
+    if (event.flags.hasFlag(Pistache::Polling::NotifyOn::Read))
+    {
+        if (static_cast<int>(fd) == read_fd)
+        {
+            requestArrive();
+        }
+    }
+    else if ((event.flags.hasFlag(Pistache::Polling::NotifyOn::Write)))
+    {
+        if (static_cast<int>(fd) == write_fd)
+        {
+            readyToResponse();
+        }
+    }
+}
+void StorageFuncAgent::requestArrive()
+{
     for (;;)
     {
         std::string msg_json;
         static auto max_read_buffer_size = wukong::utils::Config::InstanceFunctionReadBufferSize();
         msg_json.resize(max_read_buffer_size, 0);
         // TODO 缺少封装
-        auto size = ::read(read_fd, msg_json.data(), max_read_buffer_size);
-        if (size == -1)
-        {
-            if (errno != EAGAIN && errno != EWOULDBLOCK)
-            {
-                SPDLOG_ERROR("read fd is wrong : {}", wukong::utils::errors());
-                // TODO handler error;
-            }
-            return;
-        }
+        READ_FROM_FD_original_goto(read_fd, msg_json.data(), max_read_buffer_size);
         const auto& msg        = wukong::proto::jsonToMessage(msg_json);
         std::string funcname   = msg.function();
         uint64_t request_id    = msg.id();
@@ -147,4 +165,21 @@ void StorageFuncAgent::onReady(const Pistache::Polling::Event& event)
                                                   ([&, this](const std::string& msg) { backResponse(false, msg, request_id); }));
         }
     }
+read_fd_EAGAIN:;
+}
+void StorageFuncAgent::readyToResponse()
+{
+    for (;;)
+    {
+        if (toWrite.empty())
+            break;
+        auto result = toWrite.front();
+        WRITE_2_FD_goto(write_fd, result);
+        toWrite.pop();
+    }
+write_fd_EAGAIN:;
+    poller.rearmFd(write_fd,
+                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                   Pistache::Polling::Tag(write_fd),
+                   Pistache::Polling::Mode::Edge);
 }

@@ -38,6 +38,7 @@ message Function{
   enum FunctionType{
     C_CPP = 0;
     PYTHON = 1;
+    WebAssembly = 2;
   }
 
   string user = 1;

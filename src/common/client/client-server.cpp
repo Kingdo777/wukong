@@ -12,6 +12,7 @@ namespace wukong::client
     {
         if (status != Started)
         {
+            WK_CHECK_WITH_EXIT(handler != nullptr, "handler == nullptr");
             pool.init(options.maxConnectionsPerHost_, options.maxResponseSize_);
             reactor_->init(Pistache::Aio::AsyncContext(options.threads_));
             transportKey = reactor_->addHandler(handler);
