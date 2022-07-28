@@ -81,22 +81,30 @@ void FunctionPoolHandler::handlerFuncCreateReq()
             processCGroup->pipeArray_prefix[i] = boost::filesystem::path(NAMED_PIPE_PATH).append(uuid).append(PipeNameString[i]).string();
         }
 
+        auto process = std::make_shared<FuncInstProcess>();
+
+        process->funcname = funcname;
+        process->funcType = msg->type;
+        process->instType = msg->instanceType;
+        if (process->instType == WorkerFunction)
+        {
+            process->func_path = getFunCodePath(process->funcname, msg->type);
+            WK_CHECK_WITH_EXIT(exists(process->func_path), fmt::format("{} is not exists", process->func_path.string()));
+        }
+        process->threads = msg->threads;
+        WK_CHECK_WITH_EXIT(process->threads >= 1, "func Concurrency < 1 ?");
+
+        WorkerFuncAgent workerFuncAgent(process->func_path, process->funcType);
+        if (process->instType == WorkerFunction)
+        {
+            workerFuncAgent.loadFunc();
+        }
+
         for (uint32_t worker_index = 0; worker_index < workers; ++worker_index)
         {
-            auto process = std::make_shared<FuncInstProcess>();
-            processCGroup->process_list.emplace_back(process);
 
-            process->funcname      = funcname;
-            process->funcInst_uuid = fmt::format("{}-{}", processCGroup->funcInst_uuid_prefix, worker_index);
-            process->funcType      = msg->type;
-            process->instType      = msg->instanceType;
-            if (process->instType == WorkerFunction)
-            {
-                process->func_path = getFunCodePath(process->funcname, msg->type);
-                WK_CHECK_WITH_EXIT(exists(process->func_path), fmt::format("{} is not exists", process->func_path.string()));
-            }
-            process->threads = msg->threads;
-            WK_CHECK_WITH_EXIT(process->threads >= 1, "func Concurrency < 1 ?");
+            auto process_copy  = std::make_shared<FuncInstProcess>(*process);
+            processCGroup->process_list.emplace_back(process_copy);
 
             /// create Named-Pipe
             for (int i = 0; i < PipeIndex::pipeCount; i++)
@@ -104,7 +112,7 @@ void FunctionPoolHandler::handlerFuncCreateReq()
                 auto fd_path = boost::filesystem::path(processCGroup->pipeArray_prefix[i]).append(std::to_string(worker_index));
                 if (!exists(fd_path.parent_path()))
                     create_directories(fd_path.parent_path());
-                process->pipeArray[i] = fd_path;
+                process_copy->pipeArray[i] = fd_path;
                 if (exists(fd_path))
                 {
                     SPDLOG_WARN("May Be Wrong!!!!!!!1111");
@@ -118,16 +126,18 @@ void FunctionPoolHandler::handlerFuncCreateReq()
                 }
             }
 
-            SPDLOG_DEBUG("Creating Func Instance for {} ...", process->funcname);
-            process->pid = fork();
-            WK_CHECK_WITH_EXIT(process->pid != -1, "fork function Instance Wrong");
+            process_copy->funcInst_uuid = fmt::format("{}-{}", processCGroup->funcInst_uuid_prefix, worker_index);
+
+            SPDLOG_DEBUG("Creating Func Instance for {} ...", process_copy->funcname);
+            process_copy->pid = fork();
+            WK_CHECK_WITH_EXIT(process_copy->pid != -1, "fork function Instance Wrong");
 
             /// sub-process
-            if (process->pid == 0)
+            if (process_copy->pid == 0)
             {
-                if (process->instType == WorkerFunction)
+                if (process_copy->instType == WorkerFunction)
                 {
-                    wukong::utils::initLog(fmt::format("FunctionPool/WorkerFunction/{}/{}", process->funcname, getpid()));
+                    wukong::utils::initLog(fmt::format("FunctionPool/WorkerFunction/{}/{}", process_copy->funcname, getpid()));
                     SPDLOG_INFO("-------------------worker func config---------------------");
                     wukong::utils::Config::print();
 
@@ -147,31 +157,30 @@ void FunctionPoolHandler::handlerFuncCreateReq()
                             reading.
                      * */
 
-                    int read_fd     = open(process->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
-                    int write_fd    = open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
-                    int response_fd = open(process->pipeArray[PipeIndex::response_requestPipePath].c_str(), O_RDONLY | O_NONBLOCK);
-                    int request_fd  = open(process->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_WRONLY);
+                    int read_fd     = open(process_copy->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
+                    int write_fd    = open(process_copy->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
+                    int response_fd = open(process_copy->pipeArray[PipeIndex::response_requestPipePath].c_str(), O_RDONLY | O_NONBLOCK);
+                    int request_fd  = open(process_copy->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_WRONLY);
 
                     wukong::utils::nonblock_ioctl(write_fd, 1);
                     wukong::utils::nonblock_ioctl(request_fd, 1);
 
                     SIGNAL_HANDLER()
-                    WorkerFuncAgent agent;
-                    auto opts = WorkerFuncAgent::Options::options().threads(process->threads).funcPath(process->func_path).funcType(process->funcType).fds(read_fd, write_fd, request_fd, response_fd);
-                    agent.init(opts);
-                    agent.set_handler(std::make_shared<AgentHandler>(&agent));
-                    agent.run();
+                    auto opts = WorkerFuncAgent::Options::options().threads(process_copy->threads).funcPath(process_copy->func_path).funcType(process_copy->funcType).fds(read_fd, write_fd, request_fd, response_fd);
+                    workerFuncAgent.init(opts);
+                    workerFuncAgent.set_handler(std::make_shared<AgentHandler>(&workerFuncAgent));
+                    workerFuncAgent.run();
                     SIGNAL_WAIT()
-                    agent.shutdown();
+                    workerFuncAgent.shutdown();
                 }
-                else if (process->instType == StorageFunction)
+                else if (process_copy->instType == StorageFunction)
                 {
                     wukong::utils::initLog(fmt::format("FunctionPool/StorageFunction/{}/{}", STORAGE_FUNCTION_NAME, getpid()));
                     SPDLOG_INFO("-------------------storage func config---------------------");
                     wukong::utils::Config::print();
 
-                    int read_fd  = open(process->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
-                    int write_fd = open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
+                    int read_fd  = open(process_copy->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
+                    int write_fd = open(process_copy->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
 
                     SIGNAL_HANDLER()
                     StorageFuncAgent agent(read_fd, write_fd);
@@ -191,10 +200,10 @@ void FunctionPoolHandler::handlerFuncCreateReq()
             /// parent-process
 
             /// Waiting Create
-            int read_fd_parent = ::open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_RDONLY);
-            if (process->instType == WorkerFunction)
+            int read_fd_parent = ::open(process_copy->pipeArray[PipeIndex::write_readPipePath].c_str(), O_RDONLY);
+            if (process_copy->instType == WorkerFunction)
             {
-                int response_fd_parent = ::open(process->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_RDONLY);
+                int response_fd_parent = ::open(process_copy->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_RDONLY);
                 ::close(response_fd_parent);
             }
             bool success;
@@ -202,8 +211,10 @@ void FunctionPoolHandler::handlerFuncCreateReq()
             WK_CHECK_WITH_EXIT(success, "Create FuncInst Failed");
             ::close(read_fd_parent);
 
-            SPDLOG_DEBUG("Create Func Instance for {} Done", process->funcname);
+            SPDLOG_DEBUG("Create Func Instance for {} Done", process_copy->funcname);
         }
+
+        WK_CHECK_WITH_EXIT(process->pid == -1, "process->pid != -1");
 
         /// add to func-map
         fp->addInstanceCGroup(processCGroup);

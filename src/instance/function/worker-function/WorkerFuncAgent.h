@@ -96,11 +96,25 @@ public:
         FunctionType func_type = FunctionType::Cpp;
     };
 
+    explicit WorkerFuncAgent(boost::filesystem::path func_path, FunctionType type)
+        : Reactor()
+        , read_fd(-1)
+        , write_fd(-1)
+        , request_fd(-1)
+        , response_fd(-1)
+        , max_read_buffer_size(0)
+        , type(type)
+        , func_path(std::move(func_path))
+        , lib()
+    { }
+
     WorkerFuncAgent();
 
     void init(Options& options);
 
     void run() override;
+
+    void loadFunc();
 
     void shutdown() override;
 
@@ -130,8 +144,6 @@ private:
     void onReady(const Pistache::Polling::Event& event) override;
 
     void onFailed() const;
-
-    void loadFunc(Options& options);
 
     bool isLoaded() const
     {

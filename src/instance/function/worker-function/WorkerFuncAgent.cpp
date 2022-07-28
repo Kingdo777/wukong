@@ -101,7 +101,21 @@ WorkerFuncAgent::WorkerFuncAgent()
 
 void WorkerFuncAgent::init(WorkerFuncAgent::Options& options)
 {
-    loadFunc(options);
+
+    read_fd              = options.read_fd;
+    write_fd             = options.write_fd;
+    request_fd           = options.request_fd;
+    response_fd          = options.response_fd;
+    max_read_buffer_size = options.max_read_buffer_size;
+
+    type      = options.func_type;
+    func_path = options.func_path;
+
+    wukong::utils::nonblock_ioctl(write_fd, 1);
+    wukong::utils::nonblock_ioctl(read_fd, 1);
+    wukong::utils::nonblock_ioctl(request_fd, 1);
+    wukong::utils::nonblock_ioctl(response_fd, 1);
+
     poller.addFd(read_fd,
                  Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Read),
                  Pistache::Polling::Tag(read_fd),
@@ -286,22 +300,8 @@ void WorkerFuncAgent::onFailed() const
     WRITE_2_FD_original(write_fd, &running, sizeof(running));
 }
 
-void WorkerFuncAgent::loadFunc(WorkerFuncAgent::Options& options)
+void WorkerFuncAgent::loadFunc()
 {
-    read_fd              = options.read_fd;
-    write_fd             = options.write_fd;
-    request_fd           = options.request_fd;
-    response_fd          = options.response_fd;
-    max_read_buffer_size = options.max_read_buffer_size;
-
-    type      = options.func_type;
-    func_path = options.func_path;
-
-    wukong::utils::nonblock_ioctl(write_fd, 1);
-    wukong::utils::nonblock_ioctl(read_fd, 1);
-    wukong::utils::nonblock_ioctl(request_fd, 1);
-    wukong::utils::nonblock_ioctl(response_fd, 1);
-
     switch (type)
     {
     case Cpp: {
