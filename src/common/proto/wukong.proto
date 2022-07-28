@@ -45,12 +45,13 @@ message Function{
   string application = 2;
   string functionName = 3;
   uint32 concurrency = 4;
-  uint32 memory = 5;
-  uint32 cpu = 6;
-  string storageKey = 7;
+  uint32 workers = 5;
+  uint32 threads = 6;
+  uint32 memory = 7;
+  uint32 cpu = 8;
+  string storageKey = 9;
 
-  FunctionType type = 8;
-
+  FunctionType type = 10;
 }
 
 message Invoker{

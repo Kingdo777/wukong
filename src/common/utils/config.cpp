@@ -12,7 +12,7 @@ namespace wukong::utils
 {
 
     const std::string Config::logLevel                        = getEnvVar("LOG_LEVEL", "trace");
-    const std::string Config::enableLogFile                   = getEnvVar("ENABLE_LOG_FILE", "on");
+    const std::string Config::enableLogFile                   = getEnvVar("ENABLE_LOG_FILE", "off");
     const std::string Config::logFileBaseDir                  = getEnvVar("LOG_FILE_BASE_DIR", "/tmp/wukong/var/logs/");
     const int Config::endpointPort                            = getIntEnvVar("ENDPOINT_PORT", DEFAULT_ENDPOINT_PORT);
     const int Config::endpointNumThreads                      = getIntEnvVar("ENDPOINT_NUM_THREADS", hardware_concurrency());
@@ -37,8 +37,12 @@ namespace wukong::utils
     const int Config::insFuncReadFD                           = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_READ_FD", 3); /// 3
     const uint64_t Config::insFuncReadBufferSize              = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_READ_BUFFER_SIZE", WUKONG_MESSAGE_SIZE); /// 3
     const int Config::insFuncWriteFD                          = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 4); /// 4
-    const int Config::insFuncInternalRequestFD                = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 5); /// 4
-    const int Config::insFuncInternalResponseFD               = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 6); /// 4
+    const int Config::insFuncInternalRequestFD                = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 5); /// 5
+    const int Config::insFuncInternalResponseFD               = getIntEnvVar("INSTANCE_FUNCTION_DEFAULT_WRITE_FD", 6); /// 6
+    const int Config::sfNumThreads                            = getIntEnvVar("SF_NUM_THREADS", 1);
+    const int Config::sfNumWorkers                            = getIntEnvVar("SF_NUM_WORKERS", 1);
+    const int Config::sfCores                                 = getIntEnvVar("SF_CORES", 1000);
+    const int Config::sfMemory                                = getIntEnvVar("SF_MEMORY", 64);
 
     void Config::print()
     {
@@ -80,6 +84,12 @@ namespace wukong::utils
         SPDLOG_INFO("insFuncDefaultWriteFD          {}", insFuncWriteFD);
         SPDLOG_INFO("insFuncDefaultRequestFD        {}", insFuncInternalRequestFD);
         SPDLOG_INFO("insFuncDefaultResponseFD       {}", insFuncInternalResponseFD);
+
+        SPDLOG_INFO("--- Storage Function ---");
+        SPDLOG_INFO("sfNumThreads                   {}", sfNumThreads);
+        SPDLOG_INFO("sfNumWorkers                   {}", sfNumWorkers);
+        SPDLOG_INFO("sfCores                        {}", sfCores);
+        SPDLOG_INFO("sfMemory                       {}", sfMemory);
 
         SPDLOG_INFO("------------------------------------------------------------");
     }

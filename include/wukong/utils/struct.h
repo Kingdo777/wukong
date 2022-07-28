@@ -57,12 +57,16 @@ typedef struct FuncCreateMsg
     FuncCreateMsg(const std::string& funcname_,
                   FunctionType type_,
                   FunctionInstanceType instanceType_,
-                  int workers_ = 1,
-                  int threads_ = 1)
+                  uint32_t workers_ = 1,
+                  uint32_t threads_ = 1,
+                  uint32_t cores    = 1000,
+                  uint32_t memory   = 64)
         : type(type_)
         , instanceType(instanceType_)
         , workers(workers_)
         , threads(threads_)
+        , cores(cores)
+        , memory(memory)
     {
         funcname_size = funcname_.size();
         if (funcname_size >= WUKONG_FUNC_NAME_SIZE)
@@ -76,9 +80,13 @@ typedef struct FuncCreateMsg
     FunctionType type                 = FunctionType::Cpp;
     FunctionInstanceType instanceType = FunctionInstanceType::WorkerFunction;
     char funcname[WUKONG_FUNC_NAME_SIZE] {};
+
     size_t funcname_size = 0;
-    int workers          = 1;
-    int threads          = 1;
+    uint32_t workers     = 1;
+    uint32_t threads     = 1;
+    uint32_t cores       = 1000;
+    uint32_t memory      = 64;
+
 } FuncCreateMsg;
 
 typedef struct FuncCreateDoneMsg

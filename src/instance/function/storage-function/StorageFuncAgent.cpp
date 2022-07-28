@@ -176,10 +176,12 @@ void StorageFuncAgent::readyToResponse()
         auto result = toWrite.front();
         WRITE_2_FD_goto(write_fd, result);
         toWrite.pop();
+        continue;
+    write_fd_EAGAIN:
+        poller.rearmFd(write_fd,
+                       Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                       Pistache::Polling::Tag(write_fd),
+                       Pistache::Polling::Mode::Edge);
+        break;
     }
-write_fd_EAGAIN:;
-    poller.rearmFd(write_fd,
-                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
-                   Pistache::Polling::Tag(write_fd),
-                   Pistache::Polling::Mode::Edge);
 }

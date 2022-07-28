@@ -72,6 +72,14 @@ namespace wukong::utils
 
         static int InstanceFunctionDefaultInternalResponseFD() { return insFuncInternalResponseFD; };
 
+        static int SF_NumThreads() { return sfNumThreads; };
+
+        static int SF_NumWorkers() { return sfNumWorkers; };
+
+        static int SF_Cores() { return sfNumWorkers; };
+
+        static int SF_Memory() { return sfNumWorkers; };
+
         static void print();
 
     private:
@@ -121,6 +129,12 @@ namespace wukong::utils
         const static int insFuncWriteFD;
         const static int insFuncInternalRequestFD;
         const static int insFuncInternalResponseFD;
+
+        /// StorageFunctions
+        const static int sfNumThreads;
+        const static int sfNumWorkers;
+        const static int sfCores;
+        const static int sfMemory;
     };
 }
 

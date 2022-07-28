@@ -16,7 +16,7 @@ class Reactor
 public:
     Reactor();
 
-    void init(int thread_count, const std::string& thread_name);
+    void init(uint32_t thread_count, const std::string& thread_name);
 
     void set_handler(std::shared_ptr<Pistache::Aio::Handler> handler);
 

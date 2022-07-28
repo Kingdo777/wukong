@@ -4,6 +4,8 @@
 #include <wukong/utils/cgroup/CGroup.h>
 #include <wukong/utils/signal-tool.h>
 #include <wukong/utils/timing.h>
+
+using namespace wukong::utils;
 int main()
 {
     wukong::utils::initLog("test/cgroup/CGroup");
@@ -36,7 +38,7 @@ int main()
         char* args[] = {
             nullptr
         };
-        int ret = execvp(boost::dll::program_location().parent_path().append("tool-cgroup-subprocess").c_str(), args);
+        int ret = execvp(boost::dll::program_location().parent_path().append("test-cgroup-subprocess").c_str(), args);
         WK_CHECK_WITH_EXIT(!ret, wukong::utils::errors());
     }
     if (fork() == 0)
@@ -49,7 +51,7 @@ int main()
         char* args[] = {
             nullptr
         };
-        int ret = execvp(boost::dll::program_location().parent_path().append("tool-cgroup-subprocess").c_str(), args);
+        int ret = execvp(boost::dll::program_location().parent_path().append("test-cgroup-subprocess").c_str(), args);
         WK_CHECK_WITH_EXIT(!ret, wukong::utils::errors());
     }
     SIGNAL_WAIT()

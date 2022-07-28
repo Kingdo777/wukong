@@ -9,23 +9,26 @@
 #include <queue>
 #include <unordered_map>
 
-class CGroupPool
+namespace wukong::utils
 {
-public:
-    static std::shared_ptr<CGroupPool> GetCGroupPool()
+    class CGroupPool
     {
-        return cgPool;
-    }
+    public:
+        static std::shared_ptr<CGroupPool> GetCGroupPool()
+        {
+            return cgPool;
+        }
 
-private:
-    CGroupPool() = default;
+    private:
+        CGroupPool() = default;
 
-    std::mutex cgroup_pool_mutex;
+        std::mutex cgroup_pool_mutex;
 
-    std::unordered_map<int64_t, std::queue<std::shared_ptr<MemoryCGroup>>> memory_cgroup_map;
-    std::unordered_map<int64_t, std::queue<std::shared_ptr<CpuCGroup>>> cpu_cgroup_map;
+        std::unordered_map<int64_t, std::queue<std::shared_ptr<MemoryCGroup>>> memory_cgroup_map;
+        std::unordered_map<int64_t, std::queue<std::shared_ptr<CpuCGroup>>> cpu_cgroup_map;
 
-    static std::shared_ptr<CGroupPool> cgPool;
-};
+        static std::shared_ptr<CGroupPool> cgPool;
+    };
+}
 
 #endif // WUKONG_CGROUPPOOL_H

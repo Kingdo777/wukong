@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
 
     /* Convert data in shared memory into upper case. */
 
-    for (int j = 0; j < shmp->cnt; j++)
+    for (size_t j = 0; j < shmp->cnt; j++)
         shmp->buf[j] = (char)toupper(shmp->buf[j]);
 
     /* Post 'sem2' to tell the peer that it can now

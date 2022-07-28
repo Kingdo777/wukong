@@ -13,7 +13,14 @@ void AgentHandler::handlerMessage()
             break;
         auto msg_ptr = std::make_shared<wukong::proto::Message>(entry->msg);
         FaasHandle handle(msg_ptr, agent);
-        agent->doExec(&handle);
+        try
+        {
+            agent->doExec(&handle);
+        }
+        catch (std::exception& ex)
+        {
+            SPDLOG_ERROR("resultQueue error: {}", ex.what());
+        }
         agent->finishExec(std::move(*msg_ptr));
     }
 }
@@ -42,7 +49,6 @@ void AgentHandler::registerPoller(Pistache::Polling::Epoll& poller)
 
 WorkerFuncAgent::Options::Options()
     : threads_(1)
-    , workers_(1)
     , read_fd(wukong::utils::Config::InstanceFunctionDefaultReadFD())
     , write_fd(wukong::utils::Config::InstanceFunctionDefaultWriteFD())
     , request_fd(wukong::utils::Config::InstanceFunctionDefaultInternalRequestFD())
@@ -56,13 +62,7 @@ WorkerFuncAgent::Options WorkerFuncAgent::Options::options()
     return {};
 }
 
-WorkerFuncAgent::Options& WorkerFuncAgent::Options::threads(int val)
-{
-    threads_ = val;
-    return *this;
-}
-
-WorkerFuncAgent::Options& WorkerFuncAgent::Options::workers(int val)
+WorkerFuncAgent::Options& WorkerFuncAgent::Options::threads(uint32_t val)
 {
     threads_ = val;
     return *this;
@@ -118,6 +118,8 @@ void WorkerFuncAgent::init(WorkerFuncAgent::Options& options)
                         Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
                         Pistache::Polling::Tag(request_fd),
                         Pistache::Polling::Mode::Edge);
+    if (isPython())
+        options.threads_ = 1;
     Reactor::init(options.threads_, "Work Function Agent");
 }
 
@@ -197,6 +199,7 @@ void WorkerFuncAgent::finishExec(wukong::proto::Message msg)
     std::string storageKey = msg.resultkey();
     auto& redis            = wukong::utils::Redis::getRedis();
     redis.set(storageKey, msg_json);
+    wukong::utils::UniqueLock lock(toWriteResult_mutex);
     toWriteResult.push(std::make_shared<wukong::proto::Message>(std::move(msg)));
     poller.rearmFd(write_fd,
                    Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
@@ -206,6 +209,7 @@ void WorkerFuncAgent::finishExec(wukong::proto::Message msg)
 
 void WorkerFuncAgent::internalCall(const std::string& func, const std::string& args, uint64_t request_id, Pistache::Async::Deferred<std::string> deferred)
 {
+    wukong::utils::UniqueLock lock(toCallInternalRequest_mutex);
     toCallInternalRequest.emplace(std::make_shared<internalRequestEntry>(func, args, request_id, std::move(deferred)));
     poller.rearmFd(request_fd,
                    Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
@@ -347,6 +351,7 @@ std::shared_ptr<AgentHandler> WorkerFuncAgent::pickOneHandler()
 
 void WorkerFuncAgent::handlerWriteQueue()
 {
+    wukong::utils::UniqueLock lock(toWriteResult_mutex);
     for (;;)
     {
         if (toWriteResult.empty())
@@ -360,12 +365,14 @@ void WorkerFuncAgent::handlerWriteQueue()
         result.data_size = msg->outputdata().size();
         WRITE_2_FD_goto(write_fd, result);
         toWriteResult.pop();
+        continue;
+    write_fd_EAGAIN:
+        poller.rearmFd(write_fd,
+                       Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                       Pistache::Polling::Tag(write_fd),
+                       Pistache::Polling::Mode::Edge);
+        break;
     }
-write_fd_EAGAIN:
-    poller.rearmFd(write_fd,
-                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
-                   Pistache::Polling::Tag(write_fd),
-                   Pistache::Polling::Mode::Edge);
 }
 
 void WorkerFuncAgent::handlerIncoming()
@@ -408,6 +415,7 @@ read_fd_EAGAIN:;
 }
 void WorkerFuncAgent::handlerInternalRequest()
 {
+    wukong::utils::UniqueLock lock(toCallInternalRequest_mutex);
     for (;;)
     {
         if (toCallInternalRequest.empty())
@@ -421,15 +429,17 @@ void WorkerFuncAgent::handlerInternalRequest()
         WRITE_2_FD_goto(request_fd, request);
         toCallInternalRequest.pop();
         internalRequestDeferredMap.emplace(item->request_id, std::move(item->deferred));
+        continue;
+    write_fd_EAGAIN:
+        poller.rearmFd(request_fd,
+                       Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                       Pistache::Polling::Tag(request_fd),
+                       Pistache::Polling::Mode::Edge);
+        break;
     }
-write_fd_EAGAIN:
-    poller.rearmFd(request_fd,
-                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
-                   Pistache::Polling::Tag(request_fd),
-                   Pistache::Polling::Mode::Edge);
 }
 
-void link()
+[[maybe_unused]] void link()
 {
     interface_link();
 }

@@ -21,19 +21,18 @@ ExternalRequestEntry::ExternalRequestEntry(wukong::proto::Message msg_, Pistache
     , response(std::move(response_))
 { }
 
-FunctionInstanceInfo::FunctionInstanceInfo(std::shared_ptr<LocalGatewayHandler> handler, std::string funcInst_uuid, int64_t slots_or_freeSize)
+FunctionInstanceInfo::FunctionInstanceInfo(std::shared_ptr<LocalGatewayHandler> handler, std::string funcInst_uuid)
     : handler(std::move(handler))
     , funcInst_uuid(std::move(funcInst_uuid))
-    , slots_or_freeSize(slots_or_freeSize)
 { }
 
 void FunctionInstanceInfo::dispatch(std::shared_ptr<RequestEntry> entry, std::shared_ptr<FunctionInstanceInfo> inst, int64_t need_slots_or_freeSize)
 {
-    WK_CHECK_WITH_EXIT(slots_or_freeSize >= need_slots_or_freeSize, "slots_or_freeSize==0??");
-    instList->actual_Slots_or_allFreeSize -= need_slots_or_freeSize;
-    instList->need_Slots_or_allFreeSize -= need_slots_or_freeSize;
-    slots_or_freeSize -= need_slots_or_freeSize;
-    handler->putRequest(funcInst_uuid, std::move(entry), std::move(inst));
+    WK_CHECK_WITH_EXIT(inst->instGroup->slots_or_freeSize >= need_slots_or_freeSize, "slots_or_freeSize==0??");
+    inst->instGroup->instList->actual_Slots_or_allFreeSize -= need_slots_or_freeSize;
+    inst->instGroup->instList->need_Slots_or_allFreeSize -= need_slots_or_freeSize;
+    inst->instGroup->slots_or_freeSize -= need_slots_or_freeSize;
+    handler->putRequest(std::move(entry), std::move(inst));
 }
 void FunctionInstanceInfo::sendRequest(const wukong::proto::Message& msg) const
 {
@@ -57,6 +56,14 @@ int FunctionInstanceInfo::getRequestFD() const
 int FunctionInstanceInfo::getResponseFD() const
 {
     return fds[response_requestPipePath];
+}
+
+std::shared_ptr<FunctionInstanceInfo> FunctionInstanceGroup::loadBalanceOneInst()
+{
+    WK_CHECK_WITH_EXIT(group.size() == groupSize, "instGroup Size Wrong!");
+    uint32_t group_index = index++ % groupSize;
+    WK_CHECK_WITH_EXIT(group_index < groupSize, "");
+    return group[group_index];
 }
 
 ResponseEntry::ResponseEntry(std::shared_ptr<FunctionInstanceInfo> inst, std::shared_ptr<RequestEntry> request)
@@ -96,8 +103,8 @@ void StorageFuncEphemeralDataRecord::deleteShmDone(const std::shared_ptr<Functio
 
     if (need_lock)
         wukong::utils::UniqueLock l(mutex);
-    inst->slots_or_freeSize += (int64_t)length;
-    inst->instList->actual_Slots_or_allFreeSize += (int64_t)length;
+    inst->instGroup->slots_or_freeSize += (int64_t)length;
+    inst->instGroup->instList->actual_Slots_or_allFreeSize += (int64_t)length;
 }
 void StorageFuncEphemeralDataRecord::createShmDone(const std::shared_ptr<FunctionInstanceInfo>& inst, const std::string& SF_dada_uuid, size_t length)
 {
@@ -126,7 +133,6 @@ LocalGateway::Options& LocalGateway::Options::threads(int val)
 
 LocalGateway::LocalGateway()
     : endpoint { this }
-    , func_pool_process(std::make_shared<wukong::utils::DefaultSubProcess>())
 {
     func_pool_exec_path = boost::dll::program_location().parent_path().append("instance-function-pool");
 }
@@ -200,7 +206,7 @@ void LocalGateway::shutdown()
     killAllProcess();
     Reactor::shutdown();
 
-    func_pool_process->kill();
+    func_pool_process.kill();
 }
 
 void LocalGateway::initFuncPool()
@@ -208,11 +214,11 @@ void LocalGateway::initFuncPool()
     std::string cmd = func_pool_exec_path.string();
     wukong::utils::SubProcess::Options options(cmd);
     options.Env("WHO_AM_I", "Function-Pool");
-    func_pool_process->setOptions(options);
-    int err = func_pool_process->spawn();
+    func_pool_process.setOptions(options);
+    int err = func_pool_process.spawn();
     WK_CHECK_WITH_EXIT(0 == err, fmt::format("spawn process \"{}\" failed with errno {}", func_pool_exec_path.string(), err));
-    func_pool_read_fd  = func_pool_process->read_fd();
-    func_pool_write_fd = func_pool_process->write_fd();
+    func_pool_read_fd  = func_pool_process.read_fd();
+    func_pool_write_fd = func_pool_process.write_fd();
 
     wukong::utils::nonblock_ioctl(func_pool_write_fd, 0);
     auto msg = GreetingMsg("HELLO FP");
@@ -303,10 +309,10 @@ std::pair<bool, std::string> LocalGateway::initApp(const std::string& username, 
             auto load_res = loadFuncCode(funcname, type);
             WK_CHECK_WITH_EXIT(load_res.first, load_res.second);
         }
-        funcInstanceList_map.emplace(funcname, std::make_shared<FunctionInstanceList>());
+        funcInstanceList_map.emplace(funcname, std::make_shared<FunctionInstances>());
         SPDLOG_DEBUG(fmt::format("Init App : load func {} OK!", funcname));
     }
-    funcInstanceList_map.emplace(STORAGE_FUNCTION_NAME, std::make_shared<FunctionInstanceList>());
+    funcInstanceList_map.emplace(STORAGE_FUNCTION_NAME, std::make_shared<FunctionInstances>());
     SPDLOG_DEBUG(fmt::format("Init App : {}#{} Done", username_, appname_));
     return std::make_pair(true, "ok");
 }
@@ -490,20 +496,32 @@ void LocalGateway::CreateFuncInst(const std::string& funcname)
     FunctionType type;
     std::string wukong_funcname;
     int64_t slots_or_freeSize;
+    uint32_t workers;
+    uint32_t threads;
+    uint32_t cores;
+    uint32_t memory;
     if (instType == WorkerFunction)
     {
         const auto& func  = getFunction(funcname);
         type              = wukong::proto::toFunctionType(func.type());
         wukong_funcname   = funcname;
         slots_or_freeSize = func.concurrency();
+        workers           = func.workers();
+        threads           = func.threads();
+        cores             = func.cpu();
+        memory            = func.memory();
     }
     else
     {
         type              = StorageFunc;
         wukong_funcname   = std::string { STORAGE_FUNCTION_NAME };
         slots_or_freeSize = STORAGE_FUNCTION_DEFAULT_SIZE;
+        workers           = wukong::utils::Config::SF_NumWorkers();
+        threads           = wukong::utils::Config::SF_NumThreads();
+        cores             = wukong::utils::Config::SF_Cores();
+        memory            = wukong::utils::Config::SF_Memory();
     }
-    FuncCreateMsg fcMsg(funcname, type, instType);
+    FuncCreateMsg fcMsg(funcname, type, instType, workers, threads, cores, memory);
     fcMsg.magic_number = MAGIC_NUMBER_WUKONG;
     WRITE_2_FD(func_pool_write_fd, fcMsg);
     /// Important, update creating_Slots_or_allFreeSize
@@ -521,18 +539,24 @@ void LocalGateway::instCreateDone()
         WK_CHECK_WITH_EXIT(MAGIC_NUMBER_CHECK(msg.magic_number), "Data Wrong, Magic Check Failed!");
         auto funcname = std::string { msg.funcname, msg.funcname_size };
 
-        /// 2.  determine the Slots or free size according to instType
+        /// 2.  determine the Slots or free size, and workers/threads according to instType
         auto instType             = msg.instType;
         int64_t slots_or_freeSize = STORAGE_FUNCTION_DEFAULT_SIZE;
         int pipes_count           = PipeIndex::pipeCount;
+        uint32_t workers          = 0;
         switch (instType)
         {
-        case WorkerFunction:
-            slots_or_freeSize = getFunction(funcname).concurrency();
+        case WorkerFunction: {
+            const auto& func  = getFunction(funcname);
+            slots_or_freeSize = func.concurrency();
+            workers           = func.workers();
             break;
-        case StorageFunction:
+        }
+        case StorageFunction: {
             pipes_count = 2;
+            workers     = wukong::utils::Config::SF_NumWorkers();
             break;
+        }
         default:
             WK_CHECK_WITH_EXIT(false, "Unknown Inst-Type");
         }
@@ -541,31 +565,41 @@ void LocalGateway::instCreateDone()
         instList->type = instType;
         instList->actual_Slots_or_allFreeSize += slots_or_freeSize;
         instList->creating_Slots_or_allFreeSize -= slots_or_freeSize;
-        /// specify handler
-        auto handler = pickOneHandler();
-        auto inst    = std::make_shared<FunctionInstanceInfo>(handler, std::string { msg.funcInst_uuid, msg.uuidSize }, slots_or_freeSize);
-        /// record the List which inst belong to
-        inst->instList = instList;
-        /// open pipes and listen
-        for (int i = 0; i < pipes_count; ++i)
+        auto instGroup                  = std::make_shared<FunctionInstanceGroup>(workers, instList);
+        instGroup->funcInst_uuid_prefix = std::string { msg.funcInst_uuid, msg.uuidSize };
+        instGroup->slots_or_freeSize += slots_or_freeSize;
+
+        for (uint32_t worker_index = 0; worker_index < workers; ++worker_index)
         {
-            auto pipe_path  = boost::filesystem::path(std::string { msg.PipeArray[i], msg.PipeSizeArray[i] });
-            auto pipe_name  = pipe_path.filename().string();
-            auto open_flags = (pipe_name.starts_with("read") || pipe_name.starts_with("response")) ? O_WRONLY : O_RDONLY | O_NONBLOCK;
-            inst->fds[i]    = ::open(pipe_path.c_str(), open_flags);
-            //            if(pipe_name.starts_with("read") || pipe_name.starts_with("response"))
-            //                wukong::utils::nonblock_ioctl(inst->fds[i], 1);
+            /// specify handler
+            auto handler = pickOneHandler();
+            auto inst    = std::make_shared<FunctionInstanceInfo>(handler, fmt::format("{}-{}", instGroup->funcInst_uuid_prefix, worker_index));
+            /// record the List which inst belong to
+            inst->instGroup     = instGroup;
+            instGroup->instList = instList;
+            /// open pipes and listen
+            for (int pipe_index = 0; pipe_index < pipes_count; ++pipe_index)
+            {
+                auto path_s           = fmt::format("{}/{}", std::string { msg.PipeArray[pipe_index], msg.PipeSizeArray[pipe_index] }, worker_index);
+                auto pipe_path        = boost::filesystem::path(path_s);
+                auto pipe_name        = pipe_path.parent_path().filename().string();
+                auto open_flags       = (pipe_name.starts_with("read") || pipe_name.starts_with("response")) ? O_WRONLY : O_RDONLY | O_NONBLOCK;
+                inst->fds[pipe_index] = ::open(pipe_path.c_str(), open_flags);
+                //            if(pipe_name.starts_with("read") || pipe_name.starts_with("response"))
+                //                wukong::utils::nonblock_ioctl(inst->fds[i], 1);
+            }
+            /// add Instance to handler's InstMap
+            handler->addInst(inst->funcInst_uuid, inst);
+            instGroup->group.emplace_back(inst);
+            instList->list.emplace_back(instGroup);
         }
-        /// add Instance to handler's InstMap
-        handler->addInst(inst->funcInst_uuid, inst);
-        instList->list.emplace_back(inst);
 
         /// 4. check waitQueue
         if (waitQueue.contains(funcname) && !waitQueue.at(funcname).empty())
         {
-            WK_CHECK_WITH_EXIT(inst->slots_or_freeSize > 0, "inst->slots_or_freeSize<=0");
+            WK_CHECK_WITH_EXIT(instGroup->slots_or_freeSize > 0, "inst->slots_or_freeSize<=0");
             auto& reqQueue = waitQueue.at(funcname);
-            while (inst->slots_or_freeSize > 0)
+            while (instGroup->slots_or_freeSize > 0)
             {
                 if (reqQueue.empty())
                     break;
@@ -574,6 +608,7 @@ void LocalGateway::instCreateDone()
                 WK_CHECK_WITH_EXIT((req->type == InternalStorageRequest_Type && !isWorker) || (req->type != InternalStorageRequest_Type && isWorker), "InstType and ReqType don't correspond");
                 int64_t need_slots_or_freeSize = isWorker ? 1 : strtol(req->msg.inputdata().c_str(), nullptr, 10);
                 WK_CHECK_WITH_EXIT(need_slots_or_freeSize > 0, "need_slots_or_freeSize<0");
+                auto inst = instGroup->loadBalanceOneInst();
                 inst->dispatch(req, inst, need_slots_or_freeSize);
                 reqQueue.pop();
             }
@@ -597,11 +632,12 @@ bool LocalGateway::checkInstList_and_dispatchReq(const std::shared_ptr<RequestEn
     {
         auto funcInstanceList = funcInstanceList_map.at(funcname)->list;
 
-        for (auto& inst : funcInstanceList)
+        for (auto& instGroup : funcInstanceList)
         {
-            WK_CHECK_WITH_EXIT(inst->slots_or_freeSize >= 0, "inst->slots_or_freeSize < 0");
-            if (inst->slots_or_freeSize < need_Slots_or_FreeSize)
+            WK_CHECK_WITH_EXIT(instGroup->slots_or_freeSize >= 0, "instGroup->slots_or_freeSize < 0");
+            if (instGroup->slots_or_freeSize < need_Slots_or_FreeSize)
                 continue;
+            auto inst = instGroup->loadBalanceOneInst();
             inst->dispatch(entry, inst, need_Slots_or_FreeSize);
             goto out;
         }
@@ -623,8 +659,8 @@ void LocalGateway::handlerResult()
         {
         case RequestType::ExternalRequest_Type:
         case RequestType::InternalRequest_Type: {
-            inst->slots_or_freeSize++;
-            inst->instList->actual_Slots_or_allFreeSize++;
+            inst->instGroup->slots_or_freeSize++;
+            inst->instGroup->instList->actual_Slots_or_allFreeSize++;
             break;
         }
         case RequestType::InternalStorageRequest_Type: {

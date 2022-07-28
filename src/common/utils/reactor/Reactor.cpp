@@ -9,7 +9,7 @@ Reactor::Reactor()
     , handlerIndex_(0)
 {
 }
-void Reactor::init(int thread_count, const std::string& thread_name)
+void Reactor::init(uint32_t thread_count, const std::string& thread_name)
 {
     reactor_->init(Pistache::Aio::AsyncContext(thread_count, thread_name));
     if (!shutdownFd.isBound())

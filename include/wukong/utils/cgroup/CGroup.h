@@ -15,80 +15,83 @@
 #include <wukong/utils/macro.h>
 #include <wukong/utils/os.h>
 
-class CGroup
+namespace wukong::utils
 {
-public:
-    static const char* CGroup_Root_Path;
-
-    explicit CGroup();
-
-    ~CGroup()
+    class CGroup
     {
-        WK_CHECK_FUNC_RET(remove(true));
-    }
+    public:
+        static const char* CGroup_Root_Path;
 
-    WK_FUNC_RETURN_TYPE create();
+        explicit CGroup();
 
-    WK_FUNC_RETURN_TYPE moveTo();
+        ~CGroup()
+        {
+            WK_CHECK_FUNC_RET(remove(true));
+        }
 
-    WK_FUNC_RETURN_TYPE remove(bool forcibly = false);
+        WK_FUNC_RETURN_TYPE create();
 
-    WK_FUNC_RETURN_TYPE getProcs(std::vector<pid_t>& procs);
+        WK_FUNC_RETURN_TYPE moveTo();
 
-protected:
-    virtual WK_FUNC_RETURN_TYPE path_check(const boost::filesystem::path& path_) = 0;
+        WK_FUNC_RETURN_TYPE remove(bool forcibly = false);
 
-    void set_path(const boost::filesystem::path& path_);
+        WK_FUNC_RETURN_TYPE getProcs(std::vector<pid_t>& procs);
 
-    WK_FUNC_RETURN_TYPE setValue(const boost::filesystem::path& path_, int64_t value);
+    protected:
+        virtual WK_FUNC_RETURN_TYPE path_check(const boost::filesystem::path& path_) = 0;
 
-    [[nodiscard]] boost::filesystem::path get_path() const;
+        void set_path(const boost::filesystem::path& path_);
 
-    enum CGroupStatus {
-        Uninitialized,
-        Created,
-        Deleted
+        WK_FUNC_RETURN_TYPE setValue(const boost::filesystem::path& path_, int64_t value);
+
+        [[nodiscard]] boost::filesystem::path get_path() const;
+
+        enum CGroupStatus {
+            Uninitialized,
+            Created,
+            Deleted
+        };
+        CGroupStatus status;
+
+        boost::filesystem::path path;
+
+        pid_t parent_process_pid;
     };
-    CGroupStatus status;
 
-    boost::filesystem::path path;
+    class MemoryCGroup : public CGroup
+    {
+    public:
+        static const char* MEMORY_CGroup_Root_Path;
+        explicit MemoryCGroup(std::string name_);
 
-    pid_t parent_process_pid;
-};
+        WK_FUNC_RETURN_TYPE setHardLimit(uint32_t mem_size);
 
-class MemoryCGroup : public CGroup
-{
-public:
-    static const char* MEMORY_CGroup_Root_Path;
-    explicit MemoryCGroup(std::string name_);
+    private:
+        WK_FUNC_RETURN_TYPE path_check(const boost::filesystem::path& path_) override;
 
-    WK_FUNC_RETURN_TYPE setHardLimit(int mem_size);
+        std::string name;
 
-private:
-    WK_FUNC_RETURN_TYPE path_check(const boost::filesystem::path& path_) override;
+        int64_t hard_limit;
+    };
 
-    std::string name;
+    class CpuCGroup : public CGroup
+    {
+    public:
+        static const char* CPU_CGroup_Root_Path;
+        explicit CpuCGroup(std::string name_);
 
-    int64_t hard_limit;
-};
+        WK_FUNC_RETURN_TYPE setShares(uint32_t shares_);
+        WK_FUNC_RETURN_TYPE setCPUS(uint32_t cores);
 
-class CpuCGroup : public CGroup
-{
-public:
-    static const char* CPU_CGroup_Root_Path;
-    explicit CpuCGroup(std::string name_);
+    private:
+        WK_FUNC_RETURN_TYPE path_check(const boost::filesystem::path& path_) override;
 
-    WK_FUNC_RETURN_TYPE setShares(int shares_);
-    WK_FUNC_RETURN_TYPE setCPUS(int cores);
+        std::string name;
 
-private:
-    WK_FUNC_RETURN_TYPE path_check(const boost::filesystem::path& path_) override;
-
-    std::string name;
-
-    int64_t shares;
-    int64_t cfs_period_us;
-    int64_t cfs_quota_us;
-};
+        int64_t shares;
+        int64_t cfs_period_us;
+        int64_t cfs_quota_us;
+    };
+}
 
 #endif // WUKONG_C_GROUP_H

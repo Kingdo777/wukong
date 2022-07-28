@@ -386,6 +386,8 @@ namespace wukong::proto
         hash.insert(std::make_pair("user", function.user()));
         hash.insert(std::make_pair("application", function.application()));
         hash.insert(std::make_pair("concurrency", std::to_string(function.concurrency())));
+        hash.insert(std::make_pair("workers", std::to_string(function.workers())));
+        hash.insert(std::make_pair("threads", std::to_string(function.threads())));
         hash.insert(std::make_pair("memory", std::to_string(function.memory())));
         hash.insert(std::make_pair("cpu", std::to_string(function.cpu())));
         hash.insert(std::make_pair("storageKey", function.storagekey()));
@@ -406,6 +408,8 @@ namespace wukong::proto
         msg.set_application(utils::getStringFromJson(d, "application", ""));
         msg.set_functionname(utils::getStringFromJson(d, "name", ""));
         msg.set_concurrency(utils::getIntFromJson(d, "concurrency", 1));
+        msg.set_workers(utils::getIntFromJson(d, "workers", 1));
+        msg.set_threads(utils::getIntFromJson(d, "threads", 1));
         msg.set_memory(utils::getIntFromJson(d, "memory", 1024));
         msg.set_cpu(utils::getIntFromJson(d, "cpu", 1000));
         msg.set_storagekey(utils::getStringFromJson(d, "storageKey", ""));
@@ -421,6 +425,8 @@ namespace wukong::proto
         msg.set_application(hash.at("application"));
         msg.set_functionname(hash.at("name"));
         msg.set_concurrency(strtol(hash.at("concurrency").c_str(), nullptr, 10));
+        msg.set_workers(strtol(hash.at("workers").c_str(), nullptr, 10));
+        msg.set_threads(strtol(hash.at("threads").c_str(), nullptr, 10));
         msg.set_memory(strtol(hash.at("memory").c_str(), nullptr, 10));
         msg.set_cpu(strtol(hash.at("cpu").c_str(), nullptr, 10));
         msg.set_storagekey(hash.at("storageKey"));
@@ -440,6 +446,8 @@ namespace wukong::proto
         d.AddMember("application",
                     rapidjson::Value(function.application().c_str(), function.application().size(), a).Move(), a);
         d.AddMember("concurrency", function.concurrency(), a);
+        d.AddMember("workers", function.workers(), a);
+        d.AddMember("threads", function.threads(), a);
         d.AddMember("memory", function.memory(), a);
         d.AddMember("cpu", function.cpu(), a);
         d.AddMember("storageKey",

@@ -68,135 +68,148 @@ void FunctionPoolHandler::handlerFuncCreateReq()
         auto msg = funcCreateReqQueue.popSafe();
         if (!msg)
             break;
+        const auto& funcname = std::string { msg->funcname, msg->funcname_size };
+        uint32_t workers     = msg->workers;
+        WK_CHECK_WITH_EXIT(workers >= 1, "workers < 1 ?");
 
-        auto process = std::make_shared<FuncInstProcess>();
+        auto processCGroup                  = std::make_shared<FuncInstProcessCGroup>(funcname, msg->cores, msg->memory, workers, msg->instanceType);
+        auto uuid                           = makeInstUUID(funcname, msg->type);
+        processCGroup->funcInst_uuid_prefix = uuid;
 
-        process->funcname      = std::string { msg->funcname, msg->funcname_size };
-        process->funcInst_uuid = makeInstUUID(process->funcname, msg->type);
-        process->funcType      = msg->type;
-        process->instType      = msg->instanceType;
-        if (process->instType == WorkerFunction)
-        {
-            process->func_path = getFunCodePath(process->funcname, msg->type);
-            WK_CHECK_WITH_EXIT(exists(process->func_path), fmt::format("{} is not exists", process->func_path.string()));
-        }
-        process->workers = msg->workers;
-        WK_CHECK_WITH_EXIT(process->workers >= 1, "func Concurrency < 1 ?");
-        process->threads = msg->threads;
-        WK_CHECK_WITH_EXIT(process->threads >= 1, "func Concurrency < 1 ?");
-
-        auto pipePathRoot = boost::filesystem::path(NAMED_PIPE_PATH).append(process->funcInst_uuid);
-
-        if (!exists(pipePathRoot))
-            create_directories(pipePathRoot);
-
-        /// create Named-Pipe
         for (int i = 0; i < PipeIndex::pipeCount; i++)
         {
-            auto fd_path          = boost::filesystem::path(pipePathRoot).append(PipeNameString[i]);
-            process->pipeArray[i] = fd_path;
-            if (exists(fd_path))
-                continue;
-            int ret = ::mkfifo(fd_path.c_str(), WUKONG_FILE_CREAT_MODE);
-            if (ret == -1)
-            {
-                perror("Create Named-Pipe Failed");
-                WK_CHECK_WITH_EXIT(false, "Create Named-Pipe Failed");
-            }
+            processCGroup->pipeArray_prefix[i] = boost::filesystem::path(NAMED_PIPE_PATH).append(uuid).append(PipeNameString[i]).string();
         }
 
-        SPDLOG_DEBUG("Creating Func Instance for {} ...", process->funcname);
-        process->pid = fork();
-        WK_CHECK_WITH_EXIT(process->pid != -1, "fork function Instance Wrong");
-
-        /// sub-process
-        if (process->pid == 0)
+        for (uint32_t worker_index = 0; worker_index < workers; ++worker_index)
         {
+            auto process = std::make_shared<FuncInstProcess>();
+            processCGroup->process_list.emplace_back(process);
+
+            process->funcname      = funcname;
+            process->funcInst_uuid = fmt::format("{}-{}", processCGroup->funcInst_uuid_prefix, worker_index);
+            process->funcType      = msg->type;
+            process->instType      = msg->instanceType;
             if (process->instType == WorkerFunction)
             {
-                wukong::utils::initLog(fmt::format("FunctionPool/WorkerFunction/{}/{}", process->funcname, getpid()));
-                SPDLOG_INFO("-------------------worker func config---------------------");
-                wukong::utils::Config::print();
-
-                /// open the pipe
-                /**
-                 * From the Open Group page for the open() function:
-                 * O_NONBLOCK
-                    When opening a FIFO with O_RDONLY or O_WRONLY set:
-                    If O_NONBLOCK is set:
-                        An open() for reading only will return without delay. An open()
-                        for writing only will return an error if no process currently
-                        has the file open for reading.
-                    If O_NONBLOCK is clear:
-                        An open() for reading only will block the calling thread until a
-                        thread opens the file for writing. An open() for writing only
-                        will block the calling thread until a thread opens the file for
-                        reading.
-                 * */
-
-                int read_fd     = open(process->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
-                int write_fd    = open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
-                int response_fd = open(process->pipeArray[PipeIndex::response_requestPipePath].c_str(), O_RDONLY | O_NONBLOCK);
-                int request_fd  = open(process->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_WRONLY);
-
-                wukong::utils::nonblock_ioctl(write_fd, 1);
-                wukong::utils::nonblock_ioctl(request_fd, 1);
-
-                SIGNAL_HANDLER()
-                WorkerFuncAgent agent;
-                auto opts = WorkerFuncAgent::Options::options().workers(process->workers).threads(process->threads).funcPath(process->func_path).funcType(process->funcType).fds(read_fd, write_fd, request_fd, response_fd);
-                agent.init(opts);
-                agent.set_handler(std::make_shared<AgentHandler>(&agent));
-                agent.run();
-                SIGNAL_WAIT()
-                agent.shutdown();
+                process->func_path = getFunCodePath(process->funcname, msg->type);
+                WK_CHECK_WITH_EXIT(exists(process->func_path), fmt::format("{} is not exists", process->func_path.string()));
             }
-            else if (process->instType == StorageFunction)
+            process->threads = msg->threads;
+            WK_CHECK_WITH_EXIT(process->threads >= 1, "func Concurrency < 1 ?");
+
+            /// create Named-Pipe
+            for (int i = 0; i < PipeIndex::pipeCount; i++)
             {
-                wukong::utils::initLog(fmt::format("FunctionPool/StorageFunction/{}/{}", STORAGE_FUNCTION_NAME, getpid()));
-                SPDLOG_INFO("-------------------storage func config---------------------");
-                wukong::utils::Config::print();
-
-                int read_fd  = open(process->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
-                int write_fd = open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
-
-                SIGNAL_HANDLER()
-                StorageFuncAgent agent(read_fd, write_fd);
-                agent.run();
-                bool running = true;
-                WRITE_2_FD_original(write_fd, &running, sizeof(running));
-                SIGNAL_WAIT()
-                agent.shutdown();
+                auto fd_path = boost::filesystem::path(processCGroup->pipeArray_prefix[i]).append(std::to_string(worker_index));
+                if (!exists(fd_path.parent_path()))
+                    create_directories(fd_path.parent_path());
+                process->pipeArray[i] = fd_path;
+                if (exists(fd_path))
+                {
+                    SPDLOG_WARN("May Be Wrong!!!!!!!1111");
+                    continue;
+                }
+                int ret = ::mkfifo(fd_path.c_str(), WUKONG_FILE_CREAT_MODE);
+                if (ret == -1)
+                {
+                    perror("Create Named-Pipe Failed");
+                    WK_CHECK_WITH_EXIT(false, "Create Named-Pipe Failed");
+                }
             }
-            else
+
+            SPDLOG_DEBUG("Creating Func Instance for {} ...", process->funcname);
+            process->pid = fork();
+            WK_CHECK_WITH_EXIT(process->pid != -1, "fork function Instance Wrong");
+
+            /// sub-process
+            if (process->pid == 0)
             {
-                WK_CHECK(false, "Unknown Instance Type");
+                if (process->instType == WorkerFunction)
+                {
+                    wukong::utils::initLog(fmt::format("FunctionPool/WorkerFunction/{}/{}", process->funcname, getpid()));
+                    SPDLOG_INFO("-------------------worker func config---------------------");
+                    wukong::utils::Config::print();
+
+                    /// open the pipe
+                    /**
+                     * From the Open Group page for the open() function:
+                     * O_NONBLOCK
+                        When opening a FIFO with O_RDONLY or O_WRONLY set:
+                        If O_NONBLOCK is set:
+                            An open() for reading only will return without delay. An open()
+                            for writing only will return an error if no process currently
+                            has the file open for reading.
+                        If O_NONBLOCK is clear:
+                            An open() for reading only will block the calling thread until a
+                            thread opens the file for writing. An open() for writing only
+                            will block the calling thread until a thread opens the file for
+                            reading.
+                     * */
+
+                    int read_fd     = open(process->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
+                    int write_fd    = open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
+                    int response_fd = open(process->pipeArray[PipeIndex::response_requestPipePath].c_str(), O_RDONLY | O_NONBLOCK);
+                    int request_fd  = open(process->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_WRONLY);
+
+                    wukong::utils::nonblock_ioctl(write_fd, 1);
+                    wukong::utils::nonblock_ioctl(request_fd, 1);
+
+                    SIGNAL_HANDLER()
+                    WorkerFuncAgent agent;
+                    auto opts = WorkerFuncAgent::Options::options().threads(process->threads).funcPath(process->func_path).funcType(process->funcType).fds(read_fd, write_fd, request_fd, response_fd);
+                    agent.init(opts);
+                    agent.set_handler(std::make_shared<AgentHandler>(&agent));
+                    agent.run();
+                    SIGNAL_WAIT()
+                    agent.shutdown();
+                }
+                else if (process->instType == StorageFunction)
+                {
+                    wukong::utils::initLog(fmt::format("FunctionPool/StorageFunction/{}/{}", STORAGE_FUNCTION_NAME, getpid()));
+                    SPDLOG_INFO("-------------------storage func config---------------------");
+                    wukong::utils::Config::print();
+
+                    int read_fd  = open(process->pipeArray[PipeIndex::read_writePipePath].c_str(), O_RDONLY | O_NONBLOCK);
+                    int write_fd = open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_WRONLY);
+
+                    SIGNAL_HANDLER()
+                    StorageFuncAgent agent(read_fd, write_fd);
+                    agent.run();
+                    bool running = true;
+                    WRITE_2_FD_original(write_fd, &running, sizeof(running));
+                    SIGNAL_WAIT()
+                    agent.shutdown();
+                }
+                else
+                {
+                    WK_CHECK(false, "Unknown Instance Type");
+                }
+                exit(0);
             }
-            exit(0);
+
+            /// parent-process
+
+            /// Waiting Create
+            int read_fd_parent = ::open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_RDONLY);
+            if (process->instType == WorkerFunction)
+            {
+                int response_fd_parent = ::open(process->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_RDONLY);
+                ::close(response_fd_parent);
+            }
+            bool success;
+            READ_FROM_FD(read_fd_parent, &success);
+            WK_CHECK_WITH_EXIT(success, "Create FuncInst Failed");
+            ::close(read_fd_parent);
+
+            SPDLOG_DEBUG("Create Func Instance for {} Done", process->funcname);
         }
-
-        /// parent-process
-
-        /// Waiting Create
-        int read_fd_parent = ::open(process->pipeArray[PipeIndex::write_readPipePath].c_str(), O_RDONLY);
-        if (process->instType == WorkerFunction)
-        {
-            int response_fd_parent = ::open(process->pipeArray[PipeIndex::request_responsePipePath].c_str(), O_RDONLY);
-            ::close(response_fd_parent);
-        }
-        bool success;
-        READ_FROM_FD(read_fd_parent, &success);
-        WK_CHECK_WITH_EXIT(success, "Create FuncInst Failed");
-        ::close(read_fd_parent);
-
-        SPDLOG_DEBUG("Create Func Instance for {} Done", process->funcname);
-
-        /// Send DoneMsg to LG
-        fp->createFuncDone(process);
 
         /// add to func-map
-        wukong::utils::UniqueLock lock(funcInstMapMutex);
-        funcInstMap.emplace(process->funcInst_uuid, process);
+        fp->addInstanceCGroup(processCGroup);
+
+        /// Send DoneMsg to LG
+        fp->createFuncDone(processCGroup);
     }
 }
 FunctionPool::Options::Options()
@@ -258,29 +271,34 @@ void FunctionPool::connectLG() const
     WK_CHECK_WITH_EXIT(msg.equal("HELLO FP"), fmt::format("Connect LocalGateway Failed, Receive `{}`", msg.to_string()));
     SPDLOG_DEBUG("Connect LocalGateway Success");
 }
-void FunctionPool::createFuncDone(const std::shared_ptr<FuncInstProcess>& process)
+void FunctionPool::createFuncDone(const std::shared_ptr<FuncInstProcessCGroup>& processCGroup)
 {
     FuncCreateDoneMsg msg;
     msg.magic_number = MAGIC_NUMBER_WUKONG;
     for (int i = 0; i < PipeIndex::pipeCount; i++)
     {
-        strcpy(msg.PipeArray[i], process->pipeArray[i].c_str());
-        msg.PipeSizeArray[i] = process->pipeArray[i].size();
+        strcpy(msg.PipeArray[i], processCGroup->pipeArray_prefix[i].c_str());
+        msg.PipeSizeArray[i] = processCGroup->pipeArray_prefix[i].size();
     }
 
-    strcpy(msg.funcInst_uuid, process->funcInst_uuid.c_str());
-    msg.uuidSize = process->funcInst_uuid.size();
+    strcpy(msg.funcInst_uuid, processCGroup->funcInst_uuid_prefix.c_str());
+    msg.uuidSize = processCGroup->funcInst_uuid_prefix.size();
 
-    strcpy(msg.funcname, process->funcname.c_str());
-    msg.funcname_size = process->funcname.size();
+    strcpy(msg.funcname, processCGroup->funcname.c_str());
+    msg.funcname_size = processCGroup->funcname.size();
 
-    msg.instType = process->instType;
+    msg.instType = processCGroup->instType;
 
     funcCreateDoneMsgQueue.push(msg);
     poller.rearmFd(write_fd,
                    Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
                    Pistache::Polling::Tag(write_fd),
                    Pistache::Polling::Mode::Edge);
+}
+void FunctionPool::addInstanceCGroup(const std::shared_ptr<FuncInstProcessCGroup>& processCGroup)
+{
+    wukong::utils::UniqueLock lock(funcInstMapMutex);
+    funcInstMap.emplace(processCGroup->funcInst_uuid_prefix, processCGroup);
 }
 std::shared_ptr<FunctionPoolHandler> FunctionPool::pickOneHandler()
 {
@@ -350,10 +368,12 @@ void FunctionPool::handlerFuncCreateDoneQueue()
         auto msg = funcCreateDoneMsgQueue.front();
         WRITE_2_FD_goto(write_fd, msg);
         funcCreateDoneMsgQueue.pop();
+        continue;
+    write_fd_EAGAIN:
+        poller.rearmFd(write_fd,
+                       Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
+                       Pistache::Polling::Tag(write_fd),
+                       Pistache::Polling::Mode::Edge);
+        break;
     }
-write_fd_EAGAIN:;
-    poller.rearmFd(write_fd,
-                   Pistache::Flags<Pistache::Polling::NotifyOn>(Pistache::Polling::NotifyOn::Write),
-                   Pistache::Polling::Tag(write_fd),
-                   Pistache::Polling::Mode::Edge);
 }

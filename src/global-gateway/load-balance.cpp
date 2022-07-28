@@ -979,7 +979,8 @@ LoadBalance::Function::registerFuncCheck(const wukong::proto::Function& function
         msg = fmt::format("{}-{} is not exists", userName, appName);
     else if ((functionSet.contains(userName) && functionSet.at(userName).contains(appName) && functionSet.at(userName).at(appName).contains(function_index(userName, appName, funcName))) || functions.contains(function_index(userName, appName, funcName)))
         msg = fmt::format("{}-{}-{} is exists", userName, appName, funcName);
-
+    else if ((function.concurrency() < function.workers() * function.threads()) || (function.concurrency() % (function.workers() * function.threads()) != 0))
+        msg = fmt::format("concurrency({}) must is an integer multiple of `workers({}) * threads({})`", function.concurrency(), function.workers(), function.threads());
     else
     {
         // 对code进行ping验证，即将其加载之后，调佣其faas_ping()函数，需要得到"pong"的返回值

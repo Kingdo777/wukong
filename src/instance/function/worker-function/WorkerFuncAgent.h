@@ -2,8 +2,8 @@
 // Created by kingdo on 2022/3/27.
 //
 
-#ifndef WUKONG_WORKERFUNCAGENT_H
-#define WUKONG_WORKERFUNCAGENT_H
+#ifndef WUKONG_WORKER_FUNC_AGENT_H
+#define WUKONG_WORKER_FUNC_AGENT_H
 
 #include <Python.h>
 #include <boost/filesystem.hpp>
@@ -73,9 +73,7 @@ public:
 
         static Options options();
 
-        Options& threads(int val);
-
-        Options& workers(int val);
+        Options& threads(uint32_t val);
 
         Options& fds(int read_fd_, int write_fd_, int request_fd_, int response_fd_);
 
@@ -84,8 +82,7 @@ public:
         Options& funcType(FunctionType type_);
 
     private:
-        int threads_;
-        int workers_;
+        uint32_t threads_;
 
         int read_fd;
         int write_fd;
@@ -96,7 +93,7 @@ public:
 
         boost::filesystem::path func_path;
 
-        FunctionType func_type;
+        FunctionType func_type = FunctionType::Cpp;
     };
 
     WorkerFuncAgent();
@@ -162,7 +159,10 @@ private:
     int response_fd;
     uint64_t max_read_buffer_size;
 
+    std::mutex toWriteResult_mutex;
     std::queue<std::shared_ptr<wukong::proto::Message>> toWriteResult;
+
+    std::mutex toCallInternalRequest_mutex;
     std::queue<std::shared_ptr<internalRequestEntry>> toCallInternalRequest;
 
     FunctionType type;
@@ -180,6 +180,6 @@ private:
     PyObject* py_func_module = nullptr;
 };
 
-void link();
+[[maybe_unused]] void link();
 
-#endif // WUKONG_WORKERFUNCAGENT_H
+#endif // WUKONG_WORKER_FUNC_AGENT_H

@@ -51,15 +51,15 @@ public:
     Pistache::Http::ResponseWriter response;
 };
 
-struct FunctionInstanceList;
+struct FunctionInstances;
+struct FunctionInstanceGroup;
 
 /// corresponding to each Worker/Storage Function, mainly for available slots,
 /// and the handler thread associated with it
 struct FunctionInstanceInfo
 {
     FunctionInstanceInfo(std::shared_ptr<LocalGatewayHandler> handler,
-                         std::string funcInst_uuid,
-                         int64_t slots_or_freeSize);
+                         std::string funcInst_uuid);
 
     void dispatch(std::shared_ptr<RequestEntry> entry, std::shared_ptr<FunctionInstanceInfo> inst, int64_t need_slots_or_freeSize = 1);
 
@@ -89,18 +89,37 @@ struct FunctionInstanceInfo
 
     std::shared_ptr<LocalGatewayHandler> handler;
     std::string funcInst_uuid;
+
+    int fds[4] = { -1, -1, -1, -1 };
+
+    std::shared_ptr<FunctionInstanceGroup> instGroup;
+};
+
+struct FunctionInstanceGroup
+{
+    FunctionInstanceGroup(uint32_t groupSize, std::shared_ptr<FunctionInstances> instList)
+        : groupSize(groupSize)
+        , instList(std::move(instList))
+    { }
+
+    std::string funcInst_uuid_prefix;
+
+    std::vector<std::shared_ptr<FunctionInstanceInfo>> group;
+    uint32_t groupSize;
+    uint32_t index = 0;
+
+    std::shared_ptr<FunctionInstanceInfo> loadBalanceOneInst();
+
     /// for WorkerFunc, it means how many available concurrent slots left
     /// for StorageFunc, it means how many available space for storage data
     int64_t slots_or_freeSize = 0;
 
-    int fds[4] = { -1, -1, -1, -1 };
-
-    std::shared_ptr<FunctionInstanceList> instList;
+    std::shared_ptr<FunctionInstances> instList;
 };
 
-struct FunctionInstanceList
+struct FunctionInstances
 {
-    std::list<std::shared_ptr<FunctionInstanceInfo>> list;
+    std::list<std::shared_ptr<FunctionInstanceGroup>> list;
     FunctionInstanceType type = WorkerFunction;
 
     int64_t need_Slots_or_allFreeSize     = 0;
@@ -189,7 +208,7 @@ public:
 
     void registerPoller(Pistache::Polling::Epoll& poller) override;
 
-    void putRequest(const std::string& funcInst_uuid, std::shared_ptr<RequestEntry> requestEntry, std::shared_ptr<FunctionInstanceInfo> inst);
+    void putRequest(std::shared_ptr<RequestEntry> requestEntry, std::shared_ptr<FunctionInstanceInfo> inst);
 
     /// called by LG, to bing Inst and handle
     void addInst(const std::string& funcInst_uuid, const std::shared_ptr<FunctionInstanceInfo>& inst);
@@ -209,12 +228,10 @@ private:
 
     struct LGHandlerRequestEntry
     {
-        LGHandlerRequestEntry(std::shared_ptr<RequestEntry> request, std::string funcInst_uuid, std::shared_ptr<FunctionInstanceInfo> inst)
+        LGHandlerRequestEntry(std::shared_ptr<RequestEntry> request, std::shared_ptr<FunctionInstanceInfo> inst)
             : request(std::move(request))
-            , funcInst_uuid(std::move(funcInst_uuid))
             , inst(std::move(inst)) {};
         std::shared_ptr<RequestEntry> request;
-        std::string funcInst_uuid;
         std::shared_ptr<FunctionInstanceInfo> inst;
     };
 
@@ -323,9 +340,9 @@ private:
 
     boost::filesystem::path func_pool_exec_path;
 
-    std::unordered_map<std::string, std::shared_ptr<FunctionInstanceList>> funcInstanceList_map;
+    std::unordered_map<std::string, std::shared_ptr<FunctionInstances>> funcInstanceList_map;
 
-    std::shared_ptr<wukong::utils::DefaultSubProcess> func_pool_process;
+    wukong::utils::DefaultSubProcess func_pool_process;
     int func_pool_read_fd  = -1;
     int func_pool_write_fd = -1;
 };

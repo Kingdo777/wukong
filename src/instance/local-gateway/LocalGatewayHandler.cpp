@@ -67,9 +67,9 @@ void LocalGatewayHandler::registerPoller(Pistache::Polling::Epoll& poller)
 {
     requestQueue.bind(poller);
 }
-void LocalGatewayHandler::putRequest(const std::string& funcInst_uuid, std::shared_ptr<RequestEntry> requestEntry, std::shared_ptr<FunctionInstanceInfo> inst)
+void LocalGatewayHandler::putRequest(std::shared_ptr<RequestEntry> requestEntry, std::shared_ptr<FunctionInstanceInfo> inst)
 {
-    LGHandlerRequestEntry entry(std::move(requestEntry), funcInst_uuid, std::move(inst));
+    LGHandlerRequestEntry entry(std::move(requestEntry), std::move(inst));
     requestQueue.push(std::move(entry));
 }
 void LocalGatewayHandler::addInst(const std::string& funcInst_uuid, const std::shared_ptr<FunctionInstanceInfo>& inst)
@@ -80,7 +80,7 @@ void LocalGatewayHandler::addInst(const std::string& funcInst_uuid, const std::s
     //    reactor()->registerFdOneShot(key(), inst->getWriteFD(),
     //                                 Pistache::Polling::NotifyOn::Write,
     //                                 Pistache::Polling::Mode::Edge);
-    if (inst->instList->type == WorkerFunction)
+    if (inst->instGroup->instList->type == WorkerFunction)
     {
         reactor()->registerFd(key(), inst->getRequestFD(),
                               Pistache::Polling::NotifyOn::Read,
