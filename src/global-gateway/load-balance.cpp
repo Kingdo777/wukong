@@ -370,15 +370,24 @@ void LoadBalance::handleInvokerRegister(const std::string& host,
 
 void LoadBalance::handleFuncRegister(wukong::proto::Function& function,
                                      const std::string& code,
+                                     const std::string& auth,
                                      Pistache::Http::ResponseWriter response)
 {
     wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = functions.registerFuncCheck(function, code);
     if (check_result.first)
     {
-        functions.registerFunction(function, code);
-        response.send(Pistache::Http::Code::Ok, check_result.second);
-        SPDLOG_DEBUG("Function Register Done. Success");
+        if (users.checkAuth(function.user(), auth))
+        {
+            functions.registerFunction(function, code);
+            response.send(Pistache::Http::Code::Ok, check_result.second);
+            SPDLOG_DEBUG("Function Register Done. Success");
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Authorization Denied");
+            SPDLOG_DEBUG("Function Register Done. Failed: {}", "Authorization Denied");
+        }
     }
     else
     {
@@ -390,17 +399,26 @@ void LoadBalance::handleFuncRegister(wukong::proto::Function& function,
 void LoadBalance::handleFuncDelete(const std::string& username,
                                    const std::string& appname,
                                    const std::string& funcname,
+                                   const std::string& auth,
                                    Pistache::Http::ResponseWriter response)
 {
     wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = functions.deleteFuncCheck(username, appname, funcname);
     if (check_result.first)
     {
-        /// 这里不能用引用，因为我们要删除function，如果用了引用，那么function被删除之后，就会内存泄露
-        wukong::proto::Function function = functions.functions[function_index(username, appname, funcname)];
-        functions.deleteFunction(function);
-        response.send(Pistache::Http::Code::Ok, check_result.second);
-        SPDLOG_DEBUG("Function Delete Done. Success");
+        if (users.checkAuth(username, auth))
+        {
+            /// 这里不能用引用，因为我们要删除function，如果用了引用，那么function被删除之后，就会内存泄露
+            wukong::proto::Function function = functions.functions[function_index(username, appname, funcname)];
+            functions.deleteFunction(function);
+            response.send(Pistache::Http::Code::Ok, check_result.second);
+            SPDLOG_DEBUG("Function Delete Done. Success");
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Authorization Denied");
+            SPDLOG_DEBUG("Function Delete Done. Failed: {}", "Authorization Denied");
+        }
     }
     else
     {
@@ -426,15 +444,23 @@ void LoadBalance::handleUserRegister(const wukong::proto::User& user, Pistache::
     }
 }
 
-void LoadBalance::handleUserDelete(const wukong::proto::User& user, Pistache::Http::ResponseWriter response)
+void LoadBalance::handleUserDelete(const wukong::proto::User& user, const std::string& auth, Pistache::Http::ResponseWriter response)
 {
     wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = users.deleteUserCheck(user);
     if (check_result.first)
     {
-        users.deleteUser(user);
-        response.send(Pistache::Http::Code::Ok, check_result.second);
-        SPDLOG_DEBUG("User Delete Done. Success");
+        if (users.checkAuth(user.username(), auth))
+        {
+            users.deleteUser(user);
+            response.send(Pistache::Http::Code::Ok, check_result.second);
+            SPDLOG_DEBUG("User Delete Done. Success");
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Authorization Denied");
+            SPDLOG_DEBUG("User Delete Done. Failed: {}", "Authorization Denied");
+        }
     }
     else
     {
@@ -443,37 +469,53 @@ void LoadBalance::handleUserDelete(const wukong::proto::User& user, Pistache::Ht
     }
 }
 
-void LoadBalance::handleAppCreate(const wukong::proto::Application& application, Pistache::Http::ResponseWriter response)
+void LoadBalance::handleAppCreate(const wukong::proto::Application& application, const std::string& auth, Pistache::Http::ResponseWriter response)
 {
     wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = applications.checkCreateApplication(application);
     if (check_result.first)
     {
-        applications.createApplication(application);
-        response.send(Pistache::Http::Code::Ok, check_result.second);
-        SPDLOG_DEBUG("User Register Done. Success");
+        if (users.checkAuth(application.user(), auth))
+        {
+            applications.createApplication(application);
+            response.send(Pistache::Http::Code::Ok, check_result.second);
+            SPDLOG_DEBUG("APP Create Done. Success");
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Authorization Denied");
+            SPDLOG_DEBUG("APP Create Done. Failed: {}", "Authorization Denied");
+        }
     }
     else
     {
         response.send(Pistache::Http::Code::Bad_Request, check_result.second);
-        SPDLOG_DEBUG("User Register Done. Failed: {}", check_result.second);
+        SPDLOG_DEBUG("APP Create Done. Failed: {}", check_result.second);
     }
 }
 
-void LoadBalance::handleAppDelete(const wukong::proto::Application& application, Pistache::Http::ResponseWriter response)
+void LoadBalance::handleAppDelete(const wukong::proto::Application& application, const std::string& auth, Pistache::Http::ResponseWriter response)
 {
     wukong::utils::WriteLock lock(uaf_mutex);
     auto check_result = applications.checkDeleteApplication(application);
     if (check_result.first)
     {
-        applications.deleteApplication(application);
-        response.send(Pistache::Http::Code::Ok, check_result.second);
-        SPDLOG_DEBUG("User Delete Done. Success");
+        if (users.checkAuth(application.user(), auth))
+        {
+            applications.deleteApplication(application);
+            response.send(Pistache::Http::Code::Ok, check_result.second);
+            SPDLOG_DEBUG("APP Delete Done. Success");
+        }
+        else
+        {
+            response.send(Pistache::Http::Code::Bad_Request, "Authorization Denied");
+            SPDLOG_DEBUG("APP Delete Done. Failed: Authorization Denied");
+        }
     }
     else
     {
         response.send(Pistache::Http::Code::Bad_Request, check_result.second);
-        SPDLOG_DEBUG("User Delete Done. Failed: {}", check_result.second);
+        SPDLOG_DEBUG("APP Delete Done. Failed: {}", check_result.second);
     }
 }
 

@@ -11,8 +11,8 @@
 #include <wukong/utils/dl.h>
 #include <wukong/utils/json.h>
 #include <wukong/utils/locks.h>
-#include <wukong/utils/redis.h>
 #include <wukong/utils/macro.h>
+#include <wukong/utils/redis.h>
 
 #include <map>
 #include <utility>
@@ -183,11 +183,13 @@ public:
 
     void handleFuncRegister(wukong::proto::Function& function,
                             const std::string& code,
+                            const std::string& auth,
                             Pistache::Http::ResponseWriter response);
 
     void handleFuncDelete(const std::string& username,
                           const std::string& appname,
                           const std::string& funcname,
+                          const std::string& auth,
                           Pistache::Http::ResponseWriter response);
 
     void handleFuncInfo(const std::string& username,
@@ -197,14 +199,14 @@ public:
 
     void handleUserRegister(const wukong::proto::User& user, Pistache::Http::ResponseWriter response);
 
-    void handleUserDelete(const wukong::proto::User& user, Pistache::Http::ResponseWriter response);
+    void handleUserDelete(const wukong::proto::User& user, const std::string& auth,Pistache::Http::ResponseWriter response);
 
     void handleUserInfo(const std::string& username,
                         Pistache::Http::ResponseWriter response);
 
-    void handleAppCreate(const wukong::proto::Application& application, Pistache::Http::ResponseWriter response);
+    void handleAppCreate(const wukong::proto::Application& application, const std::string& auth,Pistache::Http::ResponseWriter response);
 
-    void handleAppDelete(const wukong::proto::Application& application, Pistache::Http::ResponseWriter response);
+    void handleAppDelete(const wukong::proto::Application& application, const std::string& auth,Pistache::Http::ResponseWriter response);
 
     void handleAppInfo(const std::string& username,
                        const std::string& appname,
@@ -422,6 +424,13 @@ public:
 
         std::string getUserInfo() const;
 
+        bool checkAuth(const std::string& username, const std::string& auth) const
+        {
+            if (!userSet.contains(username) || !users.contains(username))
+                return false;
+            return users.at(username).auth() == auth;
+        }
+
     private:
         Application& application;
 
@@ -457,4 +466,4 @@ private:
     std::shared_mutex instances_share_mutex;
 };
 
-#endif //WUKONG_LOAD_BALANCE_H
+#endif // WUKONG_LOAD_BALANCE_H

@@ -4,7 +4,8 @@ from os import environ
 
 HOME_DIR = expanduser("~")
 
-CONFIG_FILE = join(HOME_DIR, ".wk", "config")
+CONFIG_FILE = join(HOME_DIR, ".wk", "CONFIG")
+USER_AUTH_FILE = join(HOME_DIR, ".wk", "AUTH")
 
 PROJ_ROOT = environ.get("WUKONG_PROJ_ROOT", "{}/CLionProjects/wukong".format(HOME_DIR))
 

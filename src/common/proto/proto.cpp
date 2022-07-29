@@ -293,6 +293,7 @@ namespace wukong::proto
     {
         std::unordered_map<std::string, std::string> hash;
         hash.insert(std::make_pair("name", user.username()));
+        hash.insert(std::make_pair("auth", user.auth()));
         return hash;
     }
 
@@ -300,6 +301,7 @@ namespace wukong::proto
     {
         wukong::proto::User msg;
         msg.set_username(hash.at("name"));
+        msg.set_auth(hash.at("auth"));
         return msg;
     }
 
@@ -312,6 +314,7 @@ namespace wukong::proto
 
         wukong::proto::User msg;
         msg.set_username(utils::getStringFromJson(d, "name", ""));
+        msg.set_auth(utils::getStringFromJson(d, "auth", ""));
 
         return msg;
     }
@@ -323,6 +326,7 @@ namespace wukong::proto
         rapidjson::Document::AllocatorType& a = d.GetAllocator();
 
         d.AddMember("name", rapidjson::Value(user.username().c_str(), user.username().size(), a).Move(), a);
+        d.AddMember("auth", rapidjson::Value(user.auth().c_str(), user.auth().size(), a).Move(), a);
 
         rapidjson::StringBuffer sb;
         rapidjson::Writer<rapidjson::StringBuffer> writer(sb);

@@ -2,10 +2,15 @@ import json
 import requests
 from invoke import task
 from wk.utils.ping import test_connect
+import wk.utils.auth as au
 
 
 @task
 def create(context, username="kingdo", appname="test"):
+    auth = au.auth(username)
+    if auth == "":
+        print("the auth of {} is empty, which is unavailable".format(username))
+        return
     (success, msg, host, port) = test_connect()
     if not success:
         print("connect global gateway failed: {}".format(msg))
@@ -15,7 +20,10 @@ def create(context, username="kingdo", appname="test"):
         "name": appname,
         "user": username
     }
-    res = requests.post(url, data=json.dumps(data))
+    cookies = {
+        "auth": auth
+    }
+    res = requests.post(url, data=json.dumps(data), cookies=cookies)
     if res.status_code == 200 and res.text == "Ok":
         print("Create application `{}#{}` Success".format(username, appname))
     else:
@@ -27,6 +35,10 @@ def create(context, username="kingdo", appname="test"):
 
 @task
 def delete(context, username="kingdo", appname="test"):
+    auth = au.auth(username)
+    if auth == "":
+        print("the auth of {} is empty, which is unavailable".format(username))
+        return
     (success, msg, host, port) = test_connect()
     if not success:
         print("connect global gateway failed: {}".format(msg))
@@ -36,7 +48,10 @@ def delete(context, username="kingdo", appname="test"):
         "name": appname,
         "user": username
     }
-    res = requests.post(url, data=json.dumps(data))
+    cookies = {
+        "auth": auth
+    }
+    res = requests.post(url, data=json.dumps(data), cookies=cookies)
     if res.status_code == 200 and res.text == "Ok":
         print("Delete application `{}#{}` Success".format(username, appname))
     else:

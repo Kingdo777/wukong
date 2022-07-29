@@ -4,6 +4,7 @@ from invoke import task
 from os.path import exists, join
 from wk.utils.ping import test_connect
 from wk.utils.env import WUKONG_BUILD_DIR, WUKONG_PYTHON_CODE_DIR
+import wk.utils.auth as au
 
 
 @task
@@ -13,6 +14,10 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
              threads=1,
              memory=1024,
              cpu=1000):
+    auth = au.auth(username)
+    if auth == "":
+        print("the auth of {} is empty, which is unavailable".format(username))
+        return
     (success, msg, host, port) = test_connect()
     if not success:
         print("connect global gateway failed: {}".format(msg))
@@ -60,6 +65,7 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
         url = "http://{}:{}/function/register".format(host, port)
         cookies = {
             "user": username,
+            "auth": auth,
             "application": appname,
             "function": funcname,
             "concurrency": str(concurrency),
@@ -82,6 +88,10 @@ def register(context, file="", username='kingdo', appname='test', funcname='hell
 
 @task
 def delete(context, username='kingdo', appname='test', funcname='hello'):
+    auth = au.auth(username)
+    if auth == "":
+        print("the auth of {} is empty, which is unavailable".format(username))
+        return
     (success, msg, host, port) = test_connect()
     if not success:
         print("connect global gateway failed: {}".format(msg))
@@ -89,6 +99,7 @@ def delete(context, username='kingdo', appname='test', funcname='hello'):
     url = "http://{}:{}/function/delete".format(host, port)
     cookies = {
         "user": username,
+        "auth": auth,
         "application": appname,
         "function": funcname,
     }

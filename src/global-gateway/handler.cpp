@@ -70,7 +70,7 @@ void GlobalGatewayHandler::handleGetReq(const Pistache::Http::Request& request, 
         msg.set_application("test");
         if (request.resource() == "/python")
         {
-//            msg.set_function("py_hello");
+            //            msg.set_function("py_hello");
             msg.set_function("py_noop");
         }
         else
@@ -124,7 +124,7 @@ void GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request& request,
         {
             SPDLOG_DEBUG("GlobalGatewayHandler received /user/delete request");
             wukong::proto::User user = wukong::proto::jsonToUser(request.body());
-            endpoint()->lb->handleUserDelete(user, std::move(response));
+            endpoint()->lb->handleUserDelete(user, user.auth(), std::move(response));
             return;
         }
         if (uri == "/user/info")
@@ -141,15 +141,17 @@ void GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request& request,
         if (uri == "/application/create")
         {
             SPDLOG_DEBUG("GlobalGatewayHandler received /application/create request");
+            auto auth                              = request.cookies().get("auth").value;
             wukong::proto::Application application = wukong::proto::jsonToApplication(request.body());
-            endpoint()->lb->handleAppCreate(application, std::move(response));
+            endpoint()->lb->handleAppCreate(application, auth, std::move(response));
             return;
         }
         if (uri == "/application/delete")
         {
             SPDLOG_DEBUG("GlobalGatewayHandler received /application/delete request");
+            auto auth                              = request.cookies().get("auth").value;
             wukong::proto::Application application = wukong::proto::jsonToApplication(request.body());
-            endpoint()->lb->handleAppDelete(application, std::move(response));
+            endpoint()->lb->handleAppDelete(application, auth, std::move(response));
             return;
         }
         if (uri == "/application/info")
@@ -169,6 +171,7 @@ void GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request& request,
             SPDLOG_DEBUG("GlobalGatewayHandler received /function/register request");
             wukong::proto::Function function;
             const auto& cookies = request.cookies();
+            auto auth           = cookies.get("auth").value;
             function.set_user(cookies.get("user").value);
             function.set_application(cookies.get("application").value);
             function.set_functionname(cookies.get("function").value);
@@ -179,16 +182,17 @@ void GlobalGatewayHandler::handlePostReq(const Pistache::Http::Request& request,
             function.set_cpu(strtol(cookies.get("cpu").value.c_str(), nullptr, 10));
             auto type = wukong::proto::FunctionName2Type(cookies.get("type").value);
             function.set_type(type);
-            endpoint()->lb->handleFuncRegister(function, request.body(), std::move(response));
+            endpoint()->lb->handleFuncRegister(function, request.body(), auth, std::move(response));
             return;
         }
         if (uri == "/function/delete")
         {
             const auto& cookies = request.cookies();
             auto username       = cookies.get("user").value;
+            auto auth           = cookies.get("auth").value;
             auto appname        = cookies.get("application").value;
             auto funcname       = cookies.get("function").value;
-            endpoint()->lb->handleFuncDelete(username, appname, funcname, std::move(response));
+            endpoint()->lb->handleFuncDelete(username, appname, funcname, auth, std::move(response));
             return;
         }
         if (uri == "/function/info")
