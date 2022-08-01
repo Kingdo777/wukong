@@ -94,16 +94,16 @@ void FunctionPoolHandler::handlerFuncCreateReq()
         process->threads = msg->threads;
         WK_CHECK_WITH_EXIT(process->threads >= 1, "func Concurrency < 1 ?");
 
-        WorkerFuncAgent workerFuncAgent(process->func_path, process->funcType);
+        WorkerFuncAgent workerFuncAgent_pre(process->func_path, process->funcType);
         if (process->instType == WorkerFunction)
         {
-            workerFuncAgent.loadFunc();
+            workerFuncAgent_pre.loadFunc();
         }
 
         for (uint32_t worker_index = 0; worker_index < workers; ++worker_index)
         {
 
-            auto process_copy  = std::make_shared<FuncInstProcess>(*process);
+            auto process_copy = std::make_shared<FuncInstProcess>(*process);
             processCGroup->process_list.emplace_back(process_copy);
 
             /// create Named-Pipe
@@ -128,7 +128,7 @@ void FunctionPoolHandler::handlerFuncCreateReq()
 
             process_copy->funcInst_uuid = fmt::format("{}-{}", processCGroup->funcInst_uuid_prefix, worker_index);
 
-            SPDLOG_DEBUG("Creating Func Instance for {} ...", process_copy->funcname);
+            SPDLOG_DEBUG("Creating Func Instance for {}({}/{}) ...", process_copy->funcname, worker_index, workers);
             process_copy->pid = fork();
             WK_CHECK_WITH_EXIT(process_copy->pid != -1, "fork function Instance Wrong");
 
@@ -166,6 +166,7 @@ void FunctionPoolHandler::handlerFuncCreateReq()
                     wukong::utils::nonblock_ioctl(request_fd, 1);
 
                     SIGNAL_HANDLER()
+                    WorkerFuncAgent workerFuncAgent(workerFuncAgent_pre);
                     auto opts = WorkerFuncAgent::Options::options().threads(process_copy->threads).funcPath(process_copy->func_path).funcType(process_copy->funcType).fds(read_fd, write_fd, request_fd, response_fd);
                     workerFuncAgent.init(opts);
                     workerFuncAgent.set_handler(std::make_shared<AgentHandler>(&workerFuncAgent));
@@ -210,11 +211,9 @@ void FunctionPoolHandler::handlerFuncCreateReq()
             READ_FROM_FD(read_fd_parent, &success);
             WK_CHECK_WITH_EXIT(success, "Create FuncInst Failed");
             ::close(read_fd_parent);
-
-            SPDLOG_DEBUG("Create Func Instance for {} Done", process_copy->funcname);
         }
-
         WK_CHECK_WITH_EXIT(process->pid == -1, "process->pid != -1");
+        SPDLOG_DEBUG("Create Func Instance for {} Done", process->funcname);
 
         /// add to func-map
         fp->addInstanceCGroup(processCGroup);

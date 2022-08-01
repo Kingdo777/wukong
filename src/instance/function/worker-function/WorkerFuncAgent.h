@@ -108,6 +108,21 @@ public:
         , lib()
     { }
 
+    WorkerFuncAgent(const WorkerFuncAgent& agent)
+        : Reactor()
+        , read_fd(-1)
+        , write_fd(-1)
+        , request_fd(-1)
+        , response_fd(-1)
+        , max_read_buffer_size(0)
+        , type(agent.type)
+        , func_path(agent.func_path)
+        , lib(agent.lib)
+        , func_entry(agent.func_entry)
+        , py_func_entry(agent.py_func_entry)
+        , py_func_module(agent.py_func_module)
+    { }
+
     WorkerFuncAgent();
 
     void init(Options& options);
